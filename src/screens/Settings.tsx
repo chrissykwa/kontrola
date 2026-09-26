@@ -24,7 +24,33 @@ import type { Category, ThemePref } from '../lib/types'
 import { useStore } from '../state/store'
 import { useUI } from '../state/ui'
 
-function download(filename: string, content: string, type: string) {
+interface HostDownloads {
+  save(req: { filename: string; data: string }): Promise<unknown>
+}
+
+/** Visor embebido de claude.ai (vista previa publicada): ahí las descargas pasan por su propio diálogo. */
+async function hostDownloads(): Promise<HostDownloads | null> {
+  const host = (window as { claude?: { use?: (name: string) => Promise<unknown> } }).claude
+  if (typeof host?.use !== 'function') return null
+  try {
+    return (await host.use('downloads')) as HostDownloads | null
+  } catch {
+    return null
+  }
+}
+
+/** Descarga un archivo generado. Devuelve true si se guardó. */
+async function download(filename: string, content: string, type: string): Promise<boolean> {
+  const host = await hostDownloads()
+  if (host) {
+    try {
+      await host.save({ filename, data: content })
+      return true
+    } catch {
+      // El usuario canceló o el visor no lo permite.
+      return false
+    }
+  }
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -34,6 +60,7 @@ function download(filename: string, content: string, type: string) {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return true
 }
 
 type SheetState =
@@ -194,9 +221,10 @@ export function Settings() {
           <button
             type="button"
             className="settings-row"
-            onClick={() => {
-              download(`kontrola-respaldo-${stamp}.json`, exportJSON(data), 'application/json')
-              toast({ message: 'Respaldo descargado' })
+            onClick={async () => {
+              if (await download(`kontrola-respaldo-${stamp}.json`, exportJSON(data), 'application/json')) {
+                toast({ message: 'Respaldo descargado' })
+              }
             }}
           >
             <Download size={20} aria-hidden="true" />
@@ -215,7 +243,7 @@ export function Settings() {
           <button
             type="button"
             className="settings-row"
-            onClick={() => download(`kontrola-movimientos-${stamp}.csv`, '﻿' + exportCSV(data), 'text/csv;charset=utf-8')}
+            onClick={() => void download(`kontrola-movimientos-${stamp}.csv`, '\ufeff' + exportCSV(data), 'text/csv;charset=utf-8')}
           >
             <FileSpreadsheet size={20} aria-hidden="true" />
             <span className="settings-row__text">

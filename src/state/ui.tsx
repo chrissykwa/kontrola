@@ -22,7 +22,15 @@ export function useHashRoute(): [Route, (r: Route) => void] {
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
   const navigate = (r: Route) => {
-    if (r !== route) window.location.hash = `/${r}`
+    if (r === route) return
+    // El estado manda; el hash es un extra (en algunos visores embebidos no se puede cambiar).
+    setRoute(r)
+    window.scrollTo({ top: 0 })
+    try {
+      window.location.hash = `/${r}`
+    } catch {
+      // sin hash: la navegación igual funciona
+    }
   }
   return [route, navigate]
 }
