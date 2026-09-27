@@ -49,7 +49,7 @@ npm run typecheck
 npm run build        # PWA en dist/
 ```
 
-Stack: React + TypeScript + Vite, íconos Lucide, tipografía Geist. Sin backend propio.
+Stack: React + TypeScript + Vite, íconos Lucide, tipografía Geist, colores del logo. Sin backend propio.
 
 ```
 src/

@@ -23,16 +23,25 @@ const NAV: { route: Route; label: string; Icon: typeof House }[] = [
   { route: 'analisis', label: 'Análisis', Icon: ChartColumn },
 ]
 
+/**
+ * Tema propio de la app: claro por defecto, oscuro solo si lo eliges en Ajustes.
+ * Usa su propio atributo para no heredar el modo oscuro del sistema ni del visor.
+ */
 function useTheme() {
   const { data } = useStore()
   const pref = data.settings.theme
   useEffect(() => {
     const root = document.documentElement
-    if (pref === 'system') root.removeAttribute('data-theme')
-    else root.setAttribute('data-theme', pref)
-    const meta = document.querySelector('meta[name="theme-color"]')
-    const dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    meta?.setAttribute('content', dark ? '#0d0e0b' : '#ffffff')
+    root.setAttribute('data-app-theme', pref)
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const paint = () => {
+      const dark = pref === 'dark' || (pref === 'system' && media.matches)
+      root.style.colorScheme = dark ? 'dark' : 'light'
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0b1416' : '#ffffff')
+    }
+    paint()
+    media.addEventListener('change', paint)
+    return () => media.removeEventListener('change', paint)
   }, [pref])
 }
 

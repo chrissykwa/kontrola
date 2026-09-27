@@ -192,9 +192,9 @@ export function Settings() {
         <div className="segmented" role="radiogroup" aria-labelledby="s-theme">
           {(
             [
-              ['system', 'Automático'],
               ['light', 'Claro'],
               ['dark', 'Oscuro'],
+              ['system', 'Como el sistema'],
             ] as [ThemePref, string][]
           ).map(([v, label]) => (
             <button

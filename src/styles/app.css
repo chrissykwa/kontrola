@@ -1,51 +1,53 @@
 /* ==========================================================================
    Kontrola — tokens de diseño
-   Base blanca y tinta casi negra (estilo suizo); un solo acento lima.
+   Base blanca; colores de marca tomados del logo (petróleo y verde).
+   El tema lo decide la app (Ajustes), no el sistema: claro por defecto.
    ========================================================================== */
 
 :root {
   color-scheme: light;
   --bg: #ffffff;
-  --surface: #f4f5f1;
-  --surface-2: #eaece5;
-  --surface-3: #dcdfd6;
-  --border: #e5e7e0;
-  --text: #0f110d;
-  --text-2: #3b3f37;
-  --muted: #62675c;
+  --surface: #f4f7f6;
+  --surface-2: #eaf0ee;
+  --surface-3: #d9e3e0;
+  --border: #e4eae8;
+  --text: #0d1f22;
+  --text-2: #33484b;
+  --muted: #5e7275;
 
-  /* Acción principal: tinta. El lima es el único acento y se usa poco. */
-  --brand: #0f110d;
+  /* Colores del logo: petróleo profundo → verde */
+  --brand: #0a5b6b;
   --on-brand: #ffffff;
-  --brand-ink: #3d6a08;
-  --brand-soft: #eef8d2;
-  --accent: #c5f04a;
-  --on-accent: #0f110d;
+  --brand-ink: #0a6272;
+  --brand-soft: #e5f6ee;
+  --brand-green: #4cd898;
+  --brand-mid: #2daa80;
+  --brand-gradient: linear-gradient(135deg, #0a5b6b 0%, #127a78 55%, #2daa80 100%);
 
-  --income: #2f7a12;
-  --ok: #0f110d;
-  --ok-soft: #e3e6dd;
+  --income: #157a55;
+  --ok: #2daa80;
+  --ok-soft: #dcefe7;
   --warning: #8a5300;
   --warning-fill: #f0a318;
   --warning-soft: #fdf0d3;
   --danger: #b8341d;
   --danger-fill: #e0482c;
-  --danger-soft: #fce6e0;
-  --info: #37502a;
-  --info-soft: #eef2ea;
+  --danger-soft: #fce8e3;
+  --info: #0a5b6b;
+  --info-soft: #e8f3f3;
 
-  --chart-bar: #8f9486;
-  --chart-bar-strong: #0f110d;
-  --chart-grid: #eceee8;
-  --chart-axis: #d3d6cd;
+  --chart-bar: #9fb3b1;
+  --chart-bar-strong: #0a5b6b;
+  --chart-grid: #edf2f0;
+  --chart-axis: #d5dfdc;
 
-  --scrim: rgba(15, 17, 13, 0.4);
+  --scrim: rgba(13, 31, 34, 0.38);
   --shadow: none;
-  --shadow-lg: 0 16px 48px rgba(15, 17, 13, 0.14);
-  --nav-bg: rgba(255, 255, 255, 0.86);
-  --toast-bg: #0f110d;
+  --shadow-lg: 0 16px 48px rgba(13, 31, 34, 0.12);
+  --nav-bg: rgba(255, 255, 255, 0.9);
+  --toast-bg: #0d1f22;
   --toast-text: #ffffff;
-  --toast-action: #c5f04a;
+  --toast-action: #4cd898;
   --seg-active: #ffffff;
 
   --radius-sm: 10px;
@@ -69,82 +71,82 @@
   --font: 'Geist Variable', Geist, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --bg: #0d0e0b;
-    --surface: #171914;
-    --surface-2: #21241d;
-    --surface-3: #2d3128;
-    --border: #262922;
-    --text: #f2f4ee;
-    --text-2: #c8ccbf;
-    --muted: #979c8e;
-    --brand: #c5f04a;
-    --on-brand: #0f110d;
-    --brand-ink: #c5f04a;
-    --brand-soft: rgba(197, 240, 74, 0.13);
-    --income: #a9dc3a;
-    --ok: #c5f04a;
-    --ok-soft: #2d3128;
-    --warning: #f5b94a;
-    --warning-fill: #f0a318;
-    --warning-soft: rgba(240, 163, 24, 0.14);
-    --danger: #ff8a70;
-    --danger-fill: #f0603f;
-    --danger-soft: rgba(240, 96, 63, 0.15);
-    --info: #d8e6c4;
-    --info-soft: #21241d;
-    --chart-bar: #5a5f52;
-    --chart-bar-strong: #c5f04a;
-    --chart-grid: #21241d;
-    --chart-axis: #33372e;
-    --scrim: rgba(0, 0, 0, 0.6);
-    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
-    --nav-bg: rgba(13, 14, 11, 0.86);
-    --toast-bg: #f2f4ee;
-    --toast-text: #0f110d;
-    --toast-action: #3d6a08;
-    --seg-active: #2d3128;
-  }
-}
-
-:root[data-theme='dark'] {
+:root[data-app-theme='dark'] {
   color-scheme: dark;
-  --bg: #0d0e0b;
-  --surface: #171914;
-  --surface-2: #21241d;
-  --surface-3: #2d3128;
-  --border: #262922;
-  --text: #f2f4ee;
-  --text-2: #c8ccbf;
-  --muted: #979c8e;
-  --brand: #c5f04a;
-  --on-brand: #0f110d;
-  --brand-ink: #c5f04a;
-  --brand-soft: rgba(197, 240, 74, 0.13);
-  --income: #a9dc3a;
-  --ok: #c5f04a;
-  --ok-soft: #2d3128;
+  --bg: #0b1416;
+  --surface: #121e21;
+  --surface-2: #1a2a2d;
+  --surface-3: #25383b;
+  --border: #1f3033;
+  --text: #eef5f3;
+  --text-2: #c3d2cf;
+  --muted: #8fa3a0;
+  --brand: #4cd898;
+  --on-brand: #062a30;
+  --brand-ink: #4cd898;
+  --brand-soft: rgba(76, 216, 152, 0.12);
+  --brand-gradient: linear-gradient(135deg, #0a4f5c 0%, #0f6a68 55%, #1f8f70 100%);
+  --income: #4cd898;
+  --ok: #4cd898;
+  --ok-soft: #25383b;
   --warning: #f5b94a;
-  --warning-fill: #f0a318;
   --warning-soft: rgba(240, 163, 24, 0.14);
   --danger: #ff8a70;
   --danger-fill: #f0603f;
   --danger-soft: rgba(240, 96, 63, 0.15);
-  --info: #d8e6c4;
-  --info-soft: #21241d;
-  --chart-bar: #5a5f52;
-  --chart-bar-strong: #c5f04a;
-  --chart-grid: #21241d;
-  --chart-axis: #33372e;
+  --info: #bfe9dc;
+  --info-soft: #1a2a2d;
+  --chart-bar: #3d5558;
+  --chart-bar-strong: #4cd898;
+  --chart-grid: #1a2a2d;
+  --chart-axis: #2c4144;
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
-  --nav-bg: rgba(13, 14, 11, 0.86);
-  --toast-bg: #f2f4ee;
-  --toast-text: #0f110d;
-  --toast-action: #3d6a08;
-  --seg-active: #2d3128;
+  --nav-bg: rgba(11, 20, 22, 0.9);
+  --toast-bg: #eef5f3;
+  --toast-text: #0d1f22;
+  --toast-action: #0a6272;
+  --seg-active: #25383b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-app-theme='system'] {
+    color-scheme: dark;
+    --bg: #0b1416;
+    --surface: #121e21;
+    --surface-2: #1a2a2d;
+    --surface-3: #25383b;
+    --border: #1f3033;
+    --text: #eef5f3;
+    --text-2: #c3d2cf;
+    --muted: #8fa3a0;
+    --brand: #4cd898;
+    --on-brand: #062a30;
+    --brand-ink: #4cd898;
+    --brand-soft: rgba(76, 216, 152, 0.12);
+    --brand-gradient: linear-gradient(135deg, #0a4f5c 0%, #0f6a68 55%, #1f8f70 100%);
+    --income: #4cd898;
+    --ok: #4cd898;
+    --ok-soft: #25383b;
+    --warning: #f5b94a;
+    --warning-soft: rgba(240, 163, 24, 0.14);
+    --danger: #ff8a70;
+    --danger-fill: #f0603f;
+    --danger-soft: rgba(240, 96, 63, 0.15);
+    --info: #bfe9dc;
+    --info-soft: #1a2a2d;
+    --chart-bar: #3d5558;
+    --chart-bar-strong: #4cd898;
+    --chart-grid: #1a2a2d;
+    --chart-axis: #2c4144;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+    --nav-bg: rgba(11, 20, 22, 0.9);
+    --toast-bg: #eef5f3;
+    --toast-text: #0d1f22;
+    --toast-action: #0a6272;
+    --seg-active: #25383b;
+  }
 }
 
 /* ==========================================================================
@@ -481,19 +483,30 @@ fieldset {
   font-weight: 500;
 }
 
+/* Marca en el encabezado */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  display: block;
+  object-fit: contain;
+}
+
+.brand__name {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
 /* Saldo: número protagonista sobre blanco */
 .hero {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2) 0 var(--space-1);
-}
-
-.hero__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: 6px;
+  padding: var(--space-3) 0 var(--space-2);
 }
 
 .hero__label {
@@ -502,38 +515,11 @@ fieldset {
   font-weight: 500;
 }
 
-.hero__adjust {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  padding: 0 14px;
-  min-height: 36px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  transition: background var(--dur-fast);
-  position: relative;
-}
-
-/* Área de toque de 44px sin agrandar el botón */
-.hero__adjust::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-}
-
-.hero__adjust:hover {
-  background: var(--surface);
-}
-
 .hero__value {
-  font-size: clamp(44px, 14vw, 60px);
+  font-size: clamp(44px, 13vw, 58px);
   font-weight: 650;
   letter-spacing: -0.045em;
-  line-height: 1;
+  line-height: 1.02;
   font-variant-numeric: tabular-nums;
 }
 
@@ -541,55 +527,77 @@ fieldset {
   color: var(--danger);
 }
 
-.hero__stats {
+.hero__foot {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 
-.hero__stats > div {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 6px 12px 6px 8px;
-  border-radius: 999px;
-  background: var(--surface);
-  min-width: 0;
-}
-
-.hero__stat-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.hero__stat-label svg {
-  width: 22px;
-  height: 22px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--bg);
-  color: var(--text);
-}
-
-.hero__stat-value {
+.hero__month {
   font-size: 14px;
-  font-weight: 650;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-/* "Puedes gastar hoy": el único bloque en lima */
+.hero__month span:not(.is-income) {
+  color: var(--text-2);
+}
+
+.hero__adjust {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-ink);
+  padding: 0 12px;
+  min-height: 34px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  transition: filter var(--dur-fast);
+  position: relative;
+}
+
+/* Área de toque de 44px sin agrandar el botón */
+.hero__adjust::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+}
+
+.hero__adjust:hover {
+  filter: brightness(0.97);
+}
+
+/* "Puedes gastar hoy": bloque de marca con el degradado del logo */
 .today {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-5);
   border-radius: var(--radius-lg);
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--brand-gradient);
+  color: #ffffff;
+}
+
+.today::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -80px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76, 216, 152, 0.45), transparent 70%);
+  pointer-events: none;
+}
+
+.today > * {
+  position: relative;
 }
 
 .today--over {
@@ -597,16 +605,22 @@ fieldset {
   color: var(--text);
 }
 
+.today--over::after {
+  display: none;
+}
+
 .today__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  min-height: 26px;
 }
 
 .today__label {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
+  opacity: 0.9;
 }
 
 .today__value {
@@ -622,9 +636,9 @@ fieldset {
 }
 
 .today__meter {
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
-  background: rgba(15, 17, 13, 0.12);
+  background: rgba(255, 255, 255, 0.2);
   overflow: hidden;
   margin-top: var(--space-1);
 }
@@ -633,12 +647,12 @@ fieldset {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: #0f110d;
+  background: #4cd898;
   transition: width 500ms var(--ease);
 }
 
 .today--over .today__meter {
-  background: var(--surface-2);
+  background: var(--surface-3);
 }
 
 .today--over .today__meter span {
@@ -648,16 +662,88 @@ fieldset {
 .today__sub {
   font-size: 14px;
   opacity: 0.85;
+  font-variant-numeric: tabular-nums;
 }
 
 .today .badge {
-  background: rgba(15, 17, 13, 0.1);
-  color: #0f110d;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 .today--over .badge {
   background: var(--bg);
   color: var(--danger);
+}
+
+/* Secciones sin caja: el blanco separa */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.section__title {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: background var(--dur-fast);
+}
+
+.cta:hover {
+  background: var(--surface-2);
+}
+
+.cta__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+  flex-shrink: 0;
+}
+
+.cta__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cta__title {
+  font-weight: 600;
+}
+
+.tx-list--plain .tx-row {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.tx-list--plain .tx-row:hover {
+  background: none;
+}
+
+.tx-list--plain li + li .tx-row {
+  border-top: 1px solid var(--border);
 }
 
 /* ==========================================================================
@@ -813,7 +899,7 @@ fieldset {
   flex-shrink: 0;
   border-radius: 12px;
   color: var(--cat);
-  background: color-mix(in srgb, var(--cat) 16%, transparent);
+  background: color-mix(in srgb, var(--cat) 11%, transparent);
 }
 
 .cat-icon--sm {
@@ -969,7 +1055,7 @@ fieldset {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--text);
+  background: var(--brand-mid, var(--brand));
   min-width: 4px;
   transition: width 500ms var(--ease);
 }
@@ -1359,9 +1445,9 @@ fieldset {
 }
 
 .chip.is-active {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg);
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
 }
 
 .chip__meta {
@@ -1405,7 +1491,7 @@ fieldset {
 }
 
 .cat-option.is-active {
-  border-color: var(--text);
+  border-color: var(--brand-mid, var(--brand));
   background: var(--brand-soft);
   color: var(--text);
 }
@@ -1435,7 +1521,7 @@ fieldset {
 }
 
 .icon-option.is-active {
-  border-color: var(--text);
+  border-color: var(--brand);
   color: var(--brand-ink);
   background: var(--brand-soft);
 }
@@ -1602,14 +1688,15 @@ fieldset {
 }
 
 .bottom-nav__item.is-active {
-  color: var(--text);
+  color: var(--brand-ink);
 }
 
 .bottom-nav__item.is-active svg {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--brand-soft);
+  color: var(--brand-ink);
 }
 
+/* Botón + con el degradado del logo */
 .fab {
   justify-self: center;
   display: grid;
@@ -1617,15 +1704,15 @@ fieldset {
   width: 56px;
   height: 56px;
   border-radius: 20px;
-  background: var(--text);
-  color: var(--accent);
-  box-shadow: 0 8px 24px rgba(15, 17, 13, 0.22);
+  background: var(--brand-gradient);
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(10, 91, 107, 0.28);
   transform: translateY(-10px);
   transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast);
 }
 
 .fab:hover {
-  box-shadow: 0 10px 28px rgba(15, 17, 13, 0.32);
+  box-shadow: 0 10px 26px rgba(10, 91, 107, 0.38);
 }
 
 .fab:active {
@@ -2023,7 +2110,7 @@ button.settings-row:hover {
   font-size: 14px;
 }
 
-.splash svg {
+.splash .logo {
   animation: pulse 1.2s ease-in-out infinite alternate;
 }
 

@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
         ? viteSingleFile()
         : VitePWA({
             registerType: 'autoUpdate',
-            workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
-            includeAssets: ['icon.svg'],
+            workbox: { globPatterns: ['**/*.{js,css,html,png,webp,woff2}'] },
+            includeAssets: ['favicon.png', 'apple-touch-icon.png'],
             manifest: {
               name: 'Kontrola — Finanzas personales',
               short_name: 'Kontrola',
@@ -29,8 +29,9 @@ export default defineConfig(({ mode }) => {
               background_color: '#ffffff',
               theme_color: '#ffffff',
               icons: [
-                { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-                { src: 'icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+                { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
               ],
             },
           }),

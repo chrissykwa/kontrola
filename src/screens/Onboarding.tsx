@@ -21,7 +21,7 @@ export function Onboarding() {
   return (
     <main className="onboarding">
       <div className="onboarding__brand">
-        <Logo size={56} />
+        <Logo size={72} />
         <h1>Kontrola</h1>
         <p>Anota cada gasto en segundos y sabe siempre cuánto te queda.</p>
       </div>
