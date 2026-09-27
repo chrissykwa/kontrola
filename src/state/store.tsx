@@ -1,8 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
+import { connectCloud, type Cloud } from '../lib/cloud'
 import { localStore, newId } from '../lib/storage'
 import type { AppData, Category, Settings, Transaction } from '../lib/types'
 
 export type TxInput = Omit<Transaction, 'id' | 'createdAt'>
+
+/** Dónde quedan guardados los datos. */
+export type SyncMode = 'connecting' | 'cloud' | 'local'
 
 type Action =
   | { type: 'addTx'; tx: TxInput }
@@ -47,6 +51,9 @@ function reducer(state: AppData, action: Action): AppData {
 
 interface Store {
   data: AppData
+  /** false mientras se traen los datos de la cuenta y no hay copia local que mostrar. */
+  ready: boolean
+  sync: SyncMode
   addTransaction(tx: TxInput): void
   updateTransaction(id: string, tx: TxInput): void
   deleteTransaction(id: string): Transaction | undefined
@@ -58,16 +65,94 @@ interface Store {
 
 const StoreContext = createContext<Store | null>(null)
 
+/** Estado vacío para subir todo la primera vez que se conecta la cuenta. */
+const NOTHING: AppData = {
+  version: 1,
+  settings: {} as Settings,
+  categories: [],
+  transactions: [],
+}
+
+const insideClaude = () => typeof (window as { claude?: { use?: unknown } }).claude?.use === 'function'
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, dispatch] = useReducer(reducer, undefined, () => localStore.load())
+  const [sync, setSync] = useState<SyncMode>(() => (insideClaude() ? 'connecting' : 'local'))
+  const cloud = useRef<Cloud | null>(null)
+  /** Último estado que coincide con lo guardado en la nube. */
+  const synced = useRef<AppData | null>(null)
 
+  // Conectar con la cuenta y traer los datos guardados.
+  useEffect(() => {
+    let cancelled = false
+    connectCloud().then(async (c) => {
+      if (cancelled) return
+      if (!c) {
+        setSync('local')
+        return
+      }
+      try {
+        const remote = await c.load()
+        if (cancelled) return
+        cloud.current = c
+        if (remote) {
+          synced.current = remote
+          dispatch({ type: 'replaceAll', data: remote })
+        } else {
+          // Primera vez con la cuenta: se sube lo que haya en este dispositivo.
+          synced.current = NOTHING
+        }
+        setSync('cloud')
+      } catch {
+        setSync('local')
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Guardar cada cambio: siempre en el dispositivo y, si hay cuenta, en la nube.
   useEffect(() => {
     localStore.save(data)
-  }, [data])
+    const c = cloud.current
+    if (!c || !synced.current || synced.current === data) return
+    // No sube el estado vacío previo a la bienvenida (sí sube un "Borrar todo").
+    if (synced.current === NOTHING && !data.settings.onboarded) return
+    c.save(synced.current, data)
+    synced.current = data
+  }, [data, sync])
+
+  // Al volver a la app (ej: la usaste en otro dispositivo), refresca desde la nube.
+  useEffect(() => {
+    const onVisible = async () => {
+      const c = cloud.current
+      if (document.visibilityState === 'hidden') {
+        void c?.flush()
+        return
+      }
+      if (!c || c.hasPendingWrites()) return
+      try {
+        const remote = await c.load()
+        if (!remote || c.hasPendingWrites()) return
+        if (JSON.stringify(remote) === JSON.stringify(synced.current)) return
+        synced.current = remote
+        dispatch({ type: 'replaceAll', data: remote })
+      } catch {
+        // sin conexión: se sigue con lo que hay
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
+  const ready = sync !== 'connecting' || data.settings.onboarded
 
   const store = useMemo<Store>(
     () => ({
       data,
+      ready,
+      sync,
       addTransaction: (tx) => dispatch({ type: 'addTx', tx }),
       updateTransaction: (id, tx) => dispatch({ type: 'updateTx', id, tx }),
       deleteTransaction: (id) => {
@@ -80,7 +165,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       upsertCategory: (category) => dispatch({ type: 'upsertCategory', category }),
       replaceAll: (next) => dispatch({ type: 'replaceAll', data: next }),
     }),
-    [data],
+    [data, ready, sync],
   )
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>

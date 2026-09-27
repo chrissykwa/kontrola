@@ -4,12 +4,12 @@ export function Logo({ size = 40 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="kg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#34d399" />
-          <stop offset="1" stopColor="#0ea5e9" />
+          <stop offset="0" stopColor="#c5f04a" />
+          <stop offset="1" stopColor="#a6d93a" />
         </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="16" fill="#0b1220" />
-      <circle cx="32" cy="32" r="21" fill="none" stroke="#1e293b" strokeWidth="5" />
+      <rect width="64" height="64" rx="16" fill="#0f110d" />
+      <circle cx="32" cy="32" r="21" fill="none" stroke="#2d3128" strokeWidth="5" />
       <circle
         cx="32"
         cy="32"

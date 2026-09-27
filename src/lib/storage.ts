@@ -79,7 +79,7 @@ export function normalize(input: unknown): AppData {
     settings: {
       openingBalance: isNum(s.openingBalance) ? Math.round(s.openingBalance) : 0,
       monthlyBudget: isNum(s.monthlyBudget) && s.monthlyBudget > 0 ? Math.round(s.monthlyBudget) : null,
-      theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
+      theme: s.theme === 'system' || s.theme === 'dark' ? s.theme : 'light',
       onboarded: s.onboarded === true || transactions.length > 0,
     },
     categories: categories.length ? categories : DEFAULT_CATEGORIES.map((c) => ({ ...c })),

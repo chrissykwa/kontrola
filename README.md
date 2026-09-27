@@ -13,7 +13,12 @@ Tu control de gastos personal: anotas cada gasto en segundos, se descuenta de tu
 - **Categorías editables** (nombre, ícono, color), modo claro/oscuro, respaldo en `.json` y exportación a Excel (`.csv`).
 - **Instalable en el celular** (PWA): funciona sin internet.
 
-> Los datos se guardan **solo en tu navegador** (localStorage). Descarga un respaldo desde *Ajustes → Tus datos* de vez en cuando.
+### ¿Dónde quedan tus datos?
+
+- **Abierta desde claude.ai** (página publicada): se guardan en el espacio privado de tu cuenta (`src/lib/cloud.ts`). Abres el mismo enlace en el celular o el computador y ves lo mismo. Nadie más puede leerlos, aunque compartas el enlace: cada persona tiene su propio espacio vacío.
+- **Abierta en otro lado** (GitHub Pages, `npm run dev`, archivo suelto): se guardan solo en ese navegador (localStorage). Descarga un respaldo desde *Ajustes → Tus datos* de vez en cuando.
+
+*Ajustes → Tus datos* muestra cuál de los dos casos aplica.
 
 ## Usarla
 
@@ -44,7 +49,7 @@ npm run typecheck
 npm run build        # PWA en dist/
 ```
 
-Stack: React + TypeScript + Vite, íconos Lucide, tipografía Inter. Sin backend.
+Stack: React + TypeScript + Vite, íconos Lucide, tipografía Geist. Sin backend propio.
 
 ```
 src/
@@ -59,7 +64,8 @@ La persistencia está detrás de la interfaz `DataStore` (`src/lib/storage.ts`):
 ## Próximos pasos
 
 - [ ] **Asistente con IA** dentro de la app: preguntas en lenguaje natural ("¿cuánto gasté en comida este mes?"), registrar gastos escribiendo ("almuerzo 6.500"), alertas y consejos de ahorro. Requiere un pequeño backend para guardar la API key de forma segura.
-- [ ] **Sincronización entre dispositivos** (backend + login), para no depender del navegador.
+- [x] Sincronización entre dispositivos (versión en claude.ai).
+- [ ] Sincronización también para la versión en GitHub Pages (requiere backend + login propio).
 - [ ] **Movimientos automáticos desde el banco**: vía una API de open banking chilena (ej. Fintoc) o leyendo los correos de aviso de compra del banco.
 - [ ] Gastos recurrentes (arriendo, suscripciones) que se registren solos.
 - [ ] Metas de ahorro.

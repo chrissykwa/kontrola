@@ -74,6 +74,7 @@ export function ColumnChart({
     } else if (e.key === 'Escape') setActive(null)
   }
 
+  const highlightIndex = columns.findIndex((c) => c.highlight)
   const activeCol = active !== null ? columns[active] : null
   const tipX = active !== null ? PAD.left + step * active + step / 2 : 0
 
@@ -120,7 +121,7 @@ export function ColumnChart({
                   }`}
                 />
               )}
-              {i % labelEvery === 0 || c.highlight ? (
+              {(i % labelEvery === 0 && (highlightIndex < 0 || Math.abs(i - highlightIndex) >= 2)) || c.highlight ? (
                 <text className={`chart__label ${c.highlight ? 'is-highlight' : ''}`} x={x + barW / 2} y={height - 6} textAnchor="middle">
                   {c.label}
                 </text>

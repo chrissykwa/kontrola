@@ -2,8 +2,10 @@ import {
   ArrowLeft,
   Bot,
   ChevronRight,
+  Cloud,
   Download,
   FileSpreadsheet,
+  HardDrive,
   Landmark,
   Plus,
   Scale,
@@ -70,7 +72,7 @@ type SheetState =
   | null
 
 export function Settings() {
-  const { data, updateSettings, replaceAll } = useStore()
+  const { data, sync, updateSettings, replaceAll } = useStore()
   const ui = useUI()
   const toast = useToast()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -213,10 +215,19 @@ export function Settings() {
         <h2 id="s-data" className="settings-group__title">
           Tus datos
         </h2>
-        <p className="hint">
-          Todo se guarda solo en este navegador. Descarga un respaldo de vez en cuando para no perder nada si cambias de
-          celular o borras los datos del navegador.
-        </p>
+        {sync === 'cloud' ? (
+          <p className="sync-status sync-status--cloud">
+            <Cloud size={18} aria-hidden="true" />
+            Guardado en tu cuenta de Claude. Abre el mismo enlace en cualquier dispositivo y verás tus datos.
+          </p>
+        ) : (
+          <p className="sync-status">
+            <HardDrive size={18} aria-hidden="true" />
+            {sync === 'connecting'
+              ? 'Conectando con tu cuenta…'
+              : 'Guardado solo en este navegador. Descarga un respaldo de vez en cuando para no perder nada.'}
+          </p>
+        )}
         <div className="card card--list">
           <button
             type="button"

@@ -1,6 +1,7 @@
 import { ChartColumn, House, List, Plus, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjustBalance } from './components/AdjustBalance'
+import { Logo } from './components/Logo'
 import { Sheet } from './components/Sheet'
 import { TransactionForm } from './components/TransactionForm'
 import type { Transaction } from './lib/types'
@@ -31,12 +32,12 @@ function useTheme() {
     else root.setAttribute('data-theme', pref)
     const meta = document.querySelector('meta[name="theme-color"]')
     const dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    meta?.setAttribute('content', dark ? '#0b1220' : '#f3f5f9')
+    meta?.setAttribute('content', dark ? '#0d0e0b' : '#ffffff')
   }, [pref])
 }
 
 export function App() {
-  const { data } = useStore()
+  const { data, ready } = useStore()
   const [route, navigate] = useHashRoute()
   const [sheet, setSheet] = useState<SheetState>(null)
   useTheme()
@@ -63,6 +64,15 @@ export function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [sheet])
+
+  if (!ready) {
+    return (
+      <div className="splash" role="status">
+        <Logo size={56} />
+        <span>Cargando tus datos…</span>
+      </div>
+    )
+  }
 
   if (!data.settings.onboarded) return <Onboarding />
 

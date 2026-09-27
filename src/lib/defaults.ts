@@ -54,7 +54,7 @@ export function createInitialData(): AppData {
     settings: {
       openingBalance: 0,
       monthlyBudget: null,
-      theme: 'system',
+      theme: 'light',
       onboarded: false,
     },
     categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })),
