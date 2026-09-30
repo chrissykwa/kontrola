@@ -1,9 +1,9 @@
-import { ChevronRight, Plus, Scale, Settings as SettingsIcon, Target } from 'lucide-react'
+import { ChevronRight, CircleAlert, Plus, Scale, Settings as SettingsIcon, Target } from 'lucide-react'
 import { useMemo } from 'react'
 import { CategoryIcon } from '../components/Icon'
 import { Logo } from '../components/Logo'
 import { TxRow } from '../components/TxRow'
-import { EmptyState, Meter, StatusBadge } from '../components/ui'
+import { EmptyState, Meter } from '../components/ui'
 import { currentMonth, monthLabel, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
 import { budgetStatus, currentBalance, monthPace, monthSummary } from '../lib/stats'
@@ -61,23 +61,22 @@ export function Home() {
       </section>
 
       {pace.budget > 0 ? (
-        <section className={`today ${pace.status === 'over' ? 'today--over' : ''}`} aria-labelledby="today-label">
-          <div className="today__head">
-            <p id="today-label" className="today__label">
-              {pace.status === 'over' ? 'Te pasaste del presupuesto' : 'Puedes gastar hoy'}
-            </p>
-            {pace.status !== 'ok' && <StatusBadge status={pace.status} />}
-          </div>
-          <p className="today__value">{formatCLP(pace.status === 'over' ? -pace.remaining : pace.perDay)}</p>
-          <div className="today__meter" aria-hidden="true">
-            <span style={{ width: `${Math.min(100, (pace.spent / pace.budget) * 100)}%` }} />
-          </div>
-          <p className="today__sub">
-            {pace.status === 'over'
-              ? `Llevas ${formatCLP(pace.spent)} de ${formatCLP(pace.budget)} este mes.`
-              : `Quedan ${formatCLP(pace.remaining)} de ${formatCLP(pace.budget)} · ${pace.daysLeft} ${pace.daysLeft === 1 ? 'día' : 'días'}`}
-          </p>
-        </section>
+        <button type="button" className="budget-strip" onClick={() => ui.navigate('presupuesto')}>
+          <span className="budget-strip__top">
+            <span className="muted">Presupuesto de {monthName}</span>
+            <span>
+              <strong>{formatCLP(pace.spent)}</strong>
+              <span className="muted"> de {formatCLP(pace.budget)}</span>
+            </span>
+          </span>
+          <Meter value={pace.spent} max={pace.budget} status={pace.status} label="Gastado del presupuesto del mes" />
+          {pace.status === 'over' && (
+            <span className="budget-strip__over">
+              <CircleAlert size={14} aria-hidden="true" />
+              Te pasaste por {formatCLP(-pace.remaining)}
+            </span>
+          )}
+        </button>
       ) : (
         <button type="button" className="cta" onClick={() => ui.navigate('presupuesto')}>
           <span className="cta__icon" aria-hidden="true">

@@ -104,22 +104,35 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
         ))}
       </div>
 
+      {/* El número se dibuja aparte y el input real queda invisible encima: así nunca se
+          recorta ni se corre, sin importar el largo ni la fuente del teléfono. */}
       <label className="amount-field">
         <span className="sr-only">Monto</span>
-        <span className="amount-field__currency" aria-hidden="true">
-          $
+        <span
+          className={`amount-field__display ${amountText.length > 10 ? 'is-xl' : amountText.length > 7 ? 'is-lg' : ''}`}
+          aria-hidden="true"
+        >
+          <span className="amount-field__currency">$</span>
+          <span className={amountText ? '' : 'is-placeholder'}>{amountText || '0'}</span>
+          <span className="amount-field__caret" />
         </span>
         <input
+          className="amount-field__input"
+          type="text"
           inputMode="numeric"
+          pattern="[0-9]*"
           autoComplete="off"
-          placeholder="0"
-          value={amountText}
-          // El ancho sigue al número para que "$ 12.500" quede centrado.
-          style={{ width: `${Math.max(1, amountText.length) + 0.5}ch` }}
+          value={amountText.replace(/\D/g, '')}
           data-autofocus={editing ? undefined : ''}
           onChange={(e) => {
             const n = parseAmount(e.target.value)
             setAmountText(n ? formatDigits(n) : '')
+          }}
+          // El cursor siempre al final: cada dígito nuevo se agrega a la derecha.
+          onSelect={(e) => {
+            const el = e.currentTarget
+            const end = el.value.length
+            if (el.selectionStart !== end || el.selectionEnd !== end) el.setSelectionRange(end, end)
           }}
           aria-describedby="amount-hint"
         />

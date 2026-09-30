@@ -571,107 +571,43 @@ fieldset {
   filter: brightness(0.97);
 }
 
-/* "Puedes gastar hoy": bloque de marca con el degradado del logo */
-.today {
-  position: relative;
-  overflow: hidden;
+/* Presupuesto del mes: franja simple, sin tarjeta */
+.budget-strip {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  background: var(--brand-gradient);
-  color: #ffffff;
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: background var(--dur-fast);
 }
 
-.today::after {
-  content: '';
-  position: absolute;
-  right: -60px;
-  top: -80px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(76, 216, 152, 0.45), transparent 70%);
-  pointer-events: none;
+.budget-strip:hover {
+  background: var(--surface-2);
 }
 
-.today > * {
-  position: relative;
-}
-
-.today--over {
-  background: var(--danger-soft);
-  color: var(--text);
-}
-
-.today--over::after {
-  display: none;
-}
-
-.today__head {
+.budget-strip__top {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: baseline;
   gap: var(--space-2);
-  min-height: 26px;
-}
-
-.today__label {
-  font-size: 15px;
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-.today__value {
-  font-size: 40px;
-  font-weight: 650;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
-  font-variant-numeric: tabular-nums;
-}
-
-.today--over .today__value {
-  color: var(--danger);
-}
-
-.today__meter {
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-  margin-top: var(--space-1);
-}
-
-.today__meter span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: #4cd898;
-  transition: width 500ms var(--ease);
-}
-
-.today--over .today__meter {
-  background: var(--surface-3);
-}
-
-.today--over .today__meter span {
-  background: var(--danger-fill);
-}
-
-.today__sub {
   font-size: 14px;
-  opacity: 0.85;
   font-variant-numeric: tabular-nums;
 }
 
-.today .badge {
-  background: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+.budget-strip__top strong {
+  font-size: 16px;
+  font-weight: 650;
 }
 
-.today--over .badge {
-  background: var(--bg);
+.budget-strip__over {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--danger);
 }
 
@@ -1357,38 +1293,77 @@ fieldset {
 }
 
 .amount-field {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0;
+  cursor: text;
+}
+
+.amount-field__display {
   display: flex;
   align-items: baseline;
-  justify-content: center;
-  gap: 4px;
-  padding: var(--space-2) 0;
+  gap: 6px;
+  max-width: 100%;
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.amount-field__display.is-lg {
+  font-size: 42px;
+}
+
+.amount-field__display.is-xl {
+  font-size: 34px;
 }
 
 .amount-field__currency {
-  font-size: 32px;
+  font-size: 0.6em;
   font-weight: 600;
   color: var(--muted);
 }
 
-.amount-field input {
-  min-width: 1.5ch;
-  max-width: 100%;
-  border: 0;
-  outline: none;
-  background: none;
-  font-size: 48px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  caret-color: var(--brand);
-}
-
-.amount-field input::placeholder {
+.amount-field__display .is-placeholder {
   color: var(--surface-3);
 }
 
-.amount-field:focus-within {
-  outline: none;
+.amount-field__caret {
+  display: none;
+  align-self: center;
+  width: 3px;
+  height: 0.85em;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--brand-mid, var(--brand));
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+.amount-field:focus-within .amount-field__caret {
+  display: block;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Input real: cubre todo el campo, invisible; 16px evita el zoom automático de iOS */
+.amount-field__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  color: transparent;
+  caret-color: transparent;
 }
 
 .hint {

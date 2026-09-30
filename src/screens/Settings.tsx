@@ -21,6 +21,7 @@ import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
 import { createInitialData } from '../lib/defaults'
 import { formatCLP } from '../lib/money'
+import { sortCategories } from '../lib/stats'
 import { exportCSV, exportJSON, importJSON } from '../lib/storage'
 import type { Category, ThemePref } from '../lib/types'
 import { useStore } from '../state/store'
@@ -82,7 +83,7 @@ export function Settings() {
   const [resetText, setResetText] = useState('')
 
   const stamp = new Date().toISOString().slice(0, 10)
-  const categories = data.categories.filter((c) => c.kind === catTab)
+  const categories = sortCategories(data.categories.filter((c) => c.kind === catTab))
 
   const onImport = async (file: File) => {
     try {
@@ -203,7 +204,7 @@ export function Settings() {
               role="radio"
               aria-checked={data.settings.theme === v}
               className={`segmented__opt ${data.settings.theme === v ? 'is-active' : ''}`}
-              onClick={() => updateSettings({ theme: v })}
+              onClick={() => updateSettings({ theme: v, themeChosen: true })}
             >
               {label}
             </button>

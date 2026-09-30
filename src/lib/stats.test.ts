@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialData } from './defaults'
 import { formatCLP, formatCompact, parseAmount } from './money'
-import { currentBalance, monthPace, monthSummary, monthlyTotals, noteSuggestions, totalBudget } from './stats'
+import { currentBalance, expenseCategories, monthPace, monthSummary, monthlyTotals, noteSuggestions, totalBudget } from './stats'
 import { exportCSV, importJSON, normalize } from './storage'
 import type { AppData, Transaction } from './types'
 
@@ -152,5 +152,23 @@ describe('respaldos', () => {
   it('exporta CSV con signo y escapando separadores', () => {
     const csv = exportCSV(data([tx({ amount: 500, note: 'pan; queso' })]))
     expect(csv.split('\n')[1]).toBe('2026-09-10;Gasto;Comida y antojos;"pan; queso";-500')
+  })
+})
+
+describe('categorías', () => {
+  it('deja "Otros" siempre al final aunque se creen categorías nuevas', () => {
+    const d = data([])
+    d.categories.push({ id: 'tc', name: 'Tarjeta de Crédito', icon: 'receipt', color: '#3b82f6', kind: 'expense', budget: 0 })
+    const names = expenseCategories(d).map((c) => c.name)
+    expect(names.at(-1)).toBe('Otros')
+    expect(names.at(-2)).toBe('Tarjeta de Crédito')
+  })
+})
+
+describe('tema', () => {
+  it('usa claro salvo que el usuario haya elegido otro', () => {
+    const base = { ...data([]), transactions: [] }
+    expect(normalize({ ...base, settings: { ...base.settings, theme: 'system' } }).settings.theme).toBe('light')
+    expect(normalize({ ...base, settings: { ...base.settings, theme: 'dark', themeChosen: true } }).settings.theme).toBe('dark')
   })
 })

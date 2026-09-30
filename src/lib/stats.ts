@@ -44,12 +44,22 @@ export function monthSummary(data: AppData, key: MonthKey): MonthSummary {
   return { spent, income, byCategory, daily, expenseCount }
 }
 
+/** "Otros" / "Otros ingresos": el cajón de sastre que siempre va al final de la lista. */
+export function isCatchAll(c: Category): boolean {
+  return c.id === 'otros' || c.id === 'otros-ingresos' || /^otros?\b/i.test(c.name.trim())
+}
+
+/** Mantiene el orden de creación, pero con "Otros" siempre al final. */
+export function sortCategories(list: Category[]): Category[] {
+  return [...list].sort((a, b) => Number(isCatchAll(a)) - Number(isCatchAll(b)))
+}
+
 export function expenseCategories(data: AppData, includeArchived = false): Category[] {
-  return data.categories.filter((c) => c.kind === 'expense' && (includeArchived || !c.archived))
+  return sortCategories(data.categories.filter((c) => c.kind === 'expense' && (includeArchived || !c.archived)))
 }
 
 export function incomeCategories(data: AppData): Category[] {
-  return data.categories.filter((c) => c.kind === 'income' && !c.archived)
+  return sortCategories(data.categories.filter((c) => c.kind === 'income' && !c.archived))
 }
 
 export function categoryBudgetSum(data: AppData): number {

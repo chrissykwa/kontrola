@@ -4,7 +4,7 @@ import { TxRow } from '../components/TxRow'
 import { EmptyState, MonthSwitcher } from '../components/ui'
 import { currentMonth, dayLabel } from '../lib/dates'
 import { formatCLP } from '../lib/money'
-import { transactionsOfMonth } from '../lib/stats'
+import { sortCategories, transactionsOfMonth } from '../lib/stats'
 import type { Transaction } from '../lib/types'
 import { useCategoryMap, useStore } from '../state/store'
 import { useUI } from '../state/ui'
@@ -87,7 +87,7 @@ export function Movements() {
             <span className="sr-only">Categoría</span>
             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
               <option value="">Todas las categorías</option>
-              {data.categories
+              {sortCategories(data.categories)
                 .filter((c) => typeFilter === 'all' || c.kind === typeFilter)
                 .map((c) => (
                   <option key={c.id} value={c.id}>

@@ -79,7 +79,9 @@ export function normalize(input: unknown): AppData {
     settings: {
       openingBalance: isNum(s.openingBalance) ? Math.round(s.openingBalance) : 0,
       monthlyBudget: isNum(s.monthlyBudget) && s.monthlyBudget > 0 ? Math.round(s.monthlyBudget) : null,
-      theme: s.theme === 'system' || s.theme === 'dark' ? s.theme : 'light',
+      // Versiones anteriores traían "automático" por defecto: solo se respeta si lo eligió el usuario.
+      theme: (s.theme === 'system' || s.theme === 'dark') && s.themeChosen === true ? s.theme : 'light',
+      themeChosen: s.themeChosen === true,
       onboarded: s.onboarded === true || transactions.length > 0,
     },
     categories: categories.length ? categories : DEFAULT_CATEGORIES.map((c) => ({ ...c })),

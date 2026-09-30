@@ -33,6 +33,8 @@ export interface Settings {
   /** Presupuesto total mensual. null = usar la suma de los presupuestos por categoría. */
   monthlyBudget: number | null
   theme: ThemePref
+  /** true cuando el usuario eligió el tema en Ajustes (si no, se usa claro). */
+  themeChosen?: boolean
   onboarded: boolean
 }
 
