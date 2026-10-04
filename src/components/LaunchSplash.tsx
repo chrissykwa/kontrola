@@ -4,13 +4,15 @@ import { checkForUpdate, getUpdateStatus, launchedAfterUpdate, subscribeUpdateSt
 import { useStore } from '../state/store'
 import { Logo } from './Logo'
 
-/** Lo justo para ver el logo aparecer y "respirar" una vez, sin hacer esperar. */
-const MIN_VISIBLE_MS = 1100
+/** Tiempo para ver el logo aparecer y latir, y que se note que buscó novedades. */
+const MIN_VISIBLE_MS = 3000
+/** "Buscando novedades…" se muestra al menos esto, aunque la búsqueda termine antes. */
+const MIN_SEARCHING_MS = 1900
 /**
  * No se espera más que esto para buscar novedades (ej. con mala señal). Si la búsqueda
  * encuentra una versión nueva después, la pantalla vuelve a aparecer en "Actualizando…".
  */
-const CHECK_TIMEOUT_MS = 1500
+const CHECK_TIMEOUT_MS = 2500
 const LEAVE_MS = 350
 
 /**
@@ -22,21 +24,26 @@ export function LaunchSplash() {
   const { ready } = useStore()
   const updateStatus = useSyncExternalStore(subscribeUpdateStatus, getUpdateStatus)
   const [minElapsed, setMinElapsed] = useState(false)
-  const [checked, setChecked] = useState(launchedAfterUpdate)
+  const [searchShown, setSearchShown] = useState(launchedAfterUpdate)
+  const [searchDone, setSearchDone] = useState(launchedAfterUpdate)
   const [phase, setPhase] = useState<'shown' | 'leaving' | 'gone'>('shown')
 
   useEffect(() => {
     const min = window.setTimeout(() => setMinElapsed(true), MIN_VISIBLE_MS)
     if (launchedAfterUpdate) return () => window.clearTimeout(min)
-    const giveUp = window.setTimeout(() => setChecked(true), CHECK_TIMEOUT_MS)
+    const shown = window.setTimeout(() => setSearchShown(true), MIN_SEARCHING_MS)
+    const giveUp = window.setTimeout(() => setSearchDone(true), CHECK_TIMEOUT_MS)
     checkForUpdate()
       .catch(() => false)
-      .then(() => setChecked(true))
+      .then(() => setSearchDone(true))
     return () => {
       window.clearTimeout(min)
+      window.clearTimeout(shown)
       window.clearTimeout(giveUp)
     }
   }, [])
+
+  const checked = searchShown && searchDone
 
   const updating = updateStatus === 'updating'
   const done = ready && minElapsed && checked && !updating
