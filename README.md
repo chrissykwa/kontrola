@@ -32,7 +32,13 @@ Proyecto **kontrola** (`fbnfbqobavsjscdgseim`, región São Paulo) con el esquem
 
 Para un proyecto nuevo: **SQL Editor → New query**, pega `supabase/schema.sql` y toca **Run**; luego cambia los valores de `.env.production`.
 
-**Falta (se hace a mano en el panel):** en **Authentication → Emails → Templates**, edita **Magic Link** y **Confirm signup** para que el correo traiga el código (necesario para entrar desde la app instalada en el celular). Por ejemplo:
+**Entrar:** con el correo de fábrica de Supabase llega un **enlace** para entrar. Funciona aunque lo abras en otro navegador o dispositivo.
+
+**Opcional, código de 6 dígitos:** sirve para entrar desde la app instalada en la pantalla de inicio del iPhone, donde el enlace se abre en Safari y no dentro de la app. Supabase solo deja editar las plantillas con un SMTP propio. Por ejemplo, con Gmail:
+
+1. En tu cuenta de Google activa la verificación en dos pasos y crea una **contraseña de aplicación** (Seguridad → Contraseñas de aplicaciones).
+2. En Supabase, **Authentication → Emails → Set up SMTP**: host `smtp.gmail.com`, puerto `465`, usuario y remitente tu Gmail, contraseña la de aplicación, nombre del remitente `Kontrola`.
+3. En **Templates**, edita **Magic Link** y **Confirm signup** con este cuerpo:
 
 ```html
 <h2>Tu código para entrar a Kontrola</h2>

@@ -26,8 +26,9 @@ export function getSupabase(): Promise<SupabaseClient> | null {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        // El enlace del correo vuelve con ?code=… (no choca con la navegación por #).
-        flowType: 'pkce',
+        // "implicit": el enlace del correo funciona aunque se abra en otro navegador o
+        // dispositivo que donde se pidió (con "pkce" solo funciona en el mismo navegador).
+        flowType: 'implicit',
         storageKey: 'kontrola:auth',
       },
     }),

@@ -7,9 +7,9 @@ import { useStore } from '../state/store'
 type Step = { kind: 'email' } | { kind: 'code'; email: string }
 
 /**
- * Entrar con el correo: Supabase envía un correo con un código de 6 dígitos
- * (y un enlace). El código sirve también en la app instalada en el celular,
- * donde el enlace se abriría en el navegador y no en la app.
+ * Entrar con el correo: Supabase envía un enlace (y un código de 6 dígitos si la
+ * plantilla lo incluye, lo que requiere SMTP propio). El código sirve en la app
+ * instalada en el iPhone, donde el enlace se abriría en Safari y no en la app.
  */
 export function Login() {
   const { setWithoutAccount } = useStore()
@@ -85,7 +85,7 @@ export function Login() {
               required
               autoFocus
             />
-            <p className="hint">Te enviaremos un código para entrar. No necesitas contraseña.</p>
+            <p className="hint">Te enviaremos un enlace para entrar. No necesitas contraseña.</p>
           </div>
           {error && (
             <p className="alert alert--over" role="alert">
@@ -93,7 +93,7 @@ export function Login() {
             </p>
           )}
           <button type="submit" className="btn btn--primary btn--block" disabled={busy || !email.trim()}>
-            {busy ? 'Enviando…' : 'Enviarme el código'}
+            {busy ? 'Enviando…' : 'Enviarme el enlace'}
           </button>
         </form>
       ) : (
@@ -101,7 +101,8 @@ export function Login() {
           <p className="lead login-sent">
             <Mail size={18} aria-hidden="true" />
             <span>
-              Te enviamos un correo a <strong>{step.email}</strong>. Escribe el código o toca el enlace del correo.
+              Te enviamos un correo a <strong>{step.email}</strong>. Toca el enlace del correo para entrar. Si el
+              correo trae un código, también puedes escribirlo aquí.
             </span>
           </p>
           <div className="field">
