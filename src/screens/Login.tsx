@@ -2,6 +2,7 @@ import { ArrowLeft, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Logo } from '../components/Logo'
 import { authErrorMessage, getSupabase } from '../lib/supabase'
+import { rememberPasswordForUnlock } from '../lib/vault'
 import { useStore } from '../state/store'
 
 type Step =
@@ -52,6 +53,8 @@ export function Login() {
     e.preventDefault()
     if (step.kind !== 'password' || !address || !password) return
     void run(async (sb) => {
+      // Con la misma contraseña se abre (o se crea) la llave que cifra los datos.
+      rememberPasswordForUnlock(password)
       if (step.mode === 'signin') {
         const { error: err } = await sb.auth.signInWithPassword({ email: address, password })
         if (err) throw err
@@ -258,8 +261,9 @@ export function Login() {
                 </>
               ) : (
                 <>
-                  Te enviamos un correo a <strong>{step.email}</strong> para crear una contraseña nueva. Ábrelo, elige la
-                  contraseña y después vuelve aquí y entra con ella.
+                  Te enviamos un correo a <strong>{step.email}</strong> para crear una contraseña nueva. Ábrelo y ten a
+                  mano tu <strong>código de recuperación</strong>: lo necesitas para conservar tus datos cifrados.
+                  Después vuelve aquí y entra con la contraseña nueva.
                 </>
               )}
             </span>

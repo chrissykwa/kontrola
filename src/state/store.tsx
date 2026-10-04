@@ -1,9 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { connectClaudeCloud, type Cloud } from '../lib/cloud'
+import {
+  cacheKey,
+  createVault,
+  forgetKeys,
+  getCachedKey,
+  recoverWithCode,
+  rotateRecoveryCode,
+  unlockWithPassword,
+  unlockWithRecoveryCode,
+} from '../lib/crypto'
 import { createInitialData } from '../lib/defaults'
 import { localStore, newId } from '../lib/storage'
 import { getSupabase, supabaseConfigured } from '../lib/supabase'
 import { supabaseCloud } from '../lib/supabaseCloud'
+import { loadBundle, saveBundle, takePendingPassword, wipeUserData } from '../lib/vault'
 import type { AppData, Category, Settings, Transaction } from '../lib/types'
 
 export type TxInput = Omit<Transaction, 'id' | 'createdAt'>
@@ -17,6 +29,15 @@ export type Account =
   | { status: 'checking' }
   | { status: 'signed-out' }
   | { status: 'signed-in'; email: string }
+
+/**
+ * Bóveda de cifrado del usuario con cuenta:
+ * - `checking`: buscando su llave.
+ * - `locked`: tiene llave en la nube; hay que abrirla con la contraseña o el código.
+ * - `setup`: todavía no tiene llave (cuentas anteriores al cifrado o creadas con enlace).
+ * - `ready`: llave abierta en este dispositivo; los datos se sincronizan cifrados.
+ */
+export type VaultStatus = 'none' | 'checking' | 'locked' | 'setup' | 'ready'
 
 type Action =
   | { type: 'addTx'; tx: TxInput }
@@ -72,6 +93,22 @@ interface Store {
   passwordRecovery: boolean
   finishPasswordRecovery(): void
   signOut(): Promise<void>
+  vault: VaultStatus
+  /** Código de recuperación recién creado, para mostrarlo una vez. */
+  recoveryCode: string | null
+  acknowledgeRecoveryCode(): void
+  /** Abre la llave con la contraseña o el código. Lanza `WrongSecretError` si no corresponde. */
+  unlockVault(secret: string, kind: 'password' | 'code'): Promise<void>
+  /** Crea la llave (y deja esa contraseña como la de la cuenta). */
+  setupVault(password: string): Promise<void>
+  /** Tras "Olvidé mi contraseña": recupera con el código y pone la contraseña nueva. */
+  recoverAccount(code: string, newPassword: string): Promise<void>
+  /** Sin contraseña ni código: borra los datos cifrados y empieza de cero. */
+  startOver(newPassword: string): Promise<void>
+  /** Genera un código de recuperación nuevo (pide la contraseña). */
+  regenerateRecoveryCode(password: string): Promise<void>
+  /** ¿La cuenta ya tiene datos cifrados (llave en la nube)? */
+  vaultExists(): Promise<boolean>
   addTransaction(tx: TxInput): void
   updateTransaction(id: string, tx: TxInput): void
   deleteTransaction(id: string): Transaction | undefined
@@ -90,6 +127,14 @@ const NOTHING: AppData = {
   categories: [],
   transactions: [],
 }
+
+/** Copia con referencias nuevas: compararla con `data` sube todo (para reescribir cifrado). */
+const freshRefs = (d: AppData): AppData => ({
+  ...d,
+  settings: { ...d.settings },
+  categories: d.categories.map((c) => ({ ...c })),
+  transactions: d.transactions.map((t) => ({ ...t })),
+})
 
 /** Hay cambios hechos en este dispositivo que todavía no llegan a la nube (ej: sin internet). */
 const UNSYNCED_KEY = 'kontrola:sin-sincronizar'
@@ -120,6 +165,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account>(() => (usesAccounts() ? { status: 'checking' } : { status: 'none' }))
   const [withoutAccount, setWithoutAccountState] = useState(() => readFlag(NO_ACCOUNT_KEY))
   const [passwordRecovery, setPasswordRecovery] = useState(false)
+  const [vault, setVault] = useState<VaultStatus>(() => (usesAccounts() ? 'checking' : 'none'))
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null)
+  const sbRef = useRef<SupabaseClient | null>(null)
 
   const cloud = useRef<Cloud | null>(null)
   /** Último estado que coincide con lo guardado en la nube. */
@@ -146,12 +194,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const remote = await c.load()
       const local = latest.current
       cloud.current = c
+      // Datos antiguos sin cifrar en la nube: se reescriben todos cifrados.
+      const rewriteAll = c.needsFullUpload?.() === true
       if (readFlag(UNSYNCED_KEY) && local.settings.onboarded) {
         // Lo de este dispositivo es más nuevo: se sube encima de lo que hay en la nube.
-        synced.current = remote ?? NOTHING
+        synced.current = remote ? (rewriteAll ? freshRefs(remote) : remote) : NOTHING
       } else if (remote) {
-        synced.current = remote
         dispatch({ type: 'replaceAll', data: remote })
+        synced.current = rewriteAll ? freshRefs(remote) : remote
       } else {
         // Primera vez con la cuenta: se sube lo que haya en este dispositivo.
         synced.current = NOTHING
@@ -161,6 +211,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSync('local')
     }
   }, [])
+
+  /** Usa la llave abierta: la guarda en el dispositivo y conecta la sincronización cifrada. */
+  const activateKey = useCallback(
+    async (sb: SupabaseClient, userId: string, key: CryptoKey) => {
+      await cacheKey(userId, key)
+      setVault('ready')
+      void attach(async () => supabaseCloud(sb, userId, key, onIdle))
+    },
+    [attach, onIdle],
+  )
+
+  const createAndUse = useCallback(
+    async (sb: SupabaseClient, userId: string, password: string) => {
+      const created = await createVault(password)
+      await saveBundle(sb, userId, created.bundle)
+      setRecoveryCode(created.recoveryCode)
+      await activateKey(sb, userId, created.key)
+    },
+    [activateKey],
+  )
+
+  /** Al entrar: busca la llave en el dispositivo, la abre con la contraseña recién escrita, o la crea. */
+  const openVault = useCallback(
+    async (sb: SupabaseClient, userId: string) => {
+      setVault('checking')
+      const password = takePendingPassword()
+      const cached = await getCachedKey(userId)
+      if (cached) return activateKey(sb, userId, cached)
+      try {
+        const bundle = await loadBundle(sb, userId)
+        if (bundle) {
+          if (password) {
+            try {
+              return await activateKey(sb, userId, await unlockWithPassword(bundle, password))
+            } catch {
+              // La llave se creó con otra contraseña: se pedirá en pantalla.
+            }
+          }
+          setVault('locked')
+          return
+        }
+        if (password) return await createAndUse(sb, userId, password)
+        setVault('setup')
+      } catch {
+        // Sin conexión: la pantalla de desbloqueo vuelve a intentar.
+        setVault('locked')
+      }
+    },
+    [activateKey, createAndUse],
+  )
 
   // Elegir la nube: la cuenta de claude.ai, una cuenta de Supabase o ninguna.
   useEffect(() => {
@@ -175,6 +275,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     void sbPromise.then((sb) => {
       if (cancelled) return
+      sbRef.current = sb
       const handle = (user: { id: string; email?: string } | null) => {
         if (!user) {
           if (attachedUser.current) {
@@ -184,18 +285,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             connector.current = null
             synced.current = null
             writeFlag(UNSYNCED_KEY, false)
+            void forgetKeys()
             const empty = createInitialData()
             localStore.save(empty)
             dispatch({ type: 'replaceAll', data: empty })
           }
           setAccount({ status: 'signed-out' })
+          setVault('none')
           setSync('local')
           return
         }
         setAccount({ status: 'signed-in', email: user.email ?? '' })
         if (attachedUser.current === user.id) return
         attachedUser.current = user.id
-        void attach(async () => supabaseCloud(sb, user.id, onIdle))
+        void openVault(sb, user.id)
       }
       const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
         if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
@@ -208,7 +311,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cancelled = true
       unsubscribe?.()
     }
-  }, [attach, onIdle])
+  }, [attach, onIdle, openVault])
 
   // Guardar cada cambio: siempre en el dispositivo y, si hay cuenta, en la nube.
   useEffect(() => {
@@ -273,9 +376,102 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await cloud.current?.flush()
     const sb = await getSupabase()
     await sb?.auth.signOut()
+    await forgetKeys()
   }, [])
 
-  const ready = account.status !== 'checking' && (sync !== 'connecting' || data.settings.onboarded)
+  /** Cliente y usuario actuales (para las acciones de la bóveda). */
+  const session = () => {
+    const sb = sbRef.current
+    const userId = attachedUser.current
+    if (!sb || !userId) throw new Error('Sin sesión')
+    return { sb, userId }
+  }
+
+  /** Cambia la contraseña de la cuenta; si ya era esa, no es error. */
+  const setAccountPassword = async (sb: SupabaseClient, password: string) => {
+    const { error } = await sb.auth.updateUser({ password })
+    if (error && (error as { code?: string }).code !== 'same_password') throw error
+  }
+
+  const unlockVault = useCallback(
+    async (secret: string, kind: 'password' | 'code') => {
+      const { sb, userId } = session()
+      const bundle = await loadBundle(sb, userId)
+      if (!bundle) {
+        setVault('setup')
+        return
+      }
+      const key = kind === 'password' ? await unlockWithPassword(bundle, secret) : await unlockWithRecoveryCode(bundle, secret)
+      await activateKey(sb, userId, key)
+    },
+    [activateKey],
+  )
+
+  const setupVault = useCallback(
+    async (password: string) => {
+      const { sb, userId } = session()
+      await setAccountPassword(sb, password)
+      await createAndUse(sb, userId, password)
+    },
+    [createAndUse],
+  )
+
+  const recoverAccount = useCallback(
+    async (code: string, newPassword: string) => {
+      const { sb, userId } = session()
+      const bundle = await loadBundle(sb, userId)
+      if (!bundle) {
+        await setAccountPassword(sb, newPassword)
+        await createAndUse(sb, userId, newPassword)
+      } else {
+        // Primero se comprueba el código (si está malo, no se cambia nada).
+        const recovered = await recoverWithCode(bundle, code, newPassword)
+        await setAccountPassword(sb, newPassword)
+        await saveBundle(sb, userId, recovered.bundle)
+        setRecoveryCode(recovered.recoveryCode)
+        await activateKey(sb, userId, recovered.key)
+      }
+      setPasswordRecovery(false)
+    },
+    [createAndUse, activateKey],
+  )
+
+  const startOver = useCallback(
+    async (newPassword: string) => {
+      const { sb, userId } = session()
+      await setAccountPassword(sb, newPassword)
+      await wipeUserData(sb, userId)
+      await forgetKeys()
+      cloud.current = null
+      synced.current = null
+      writeFlag(UNSYNCED_KEY, false)
+      const empty = createInitialData()
+      localStore.save(empty)
+      dispatch({ type: 'replaceAll', data: empty })
+      await createAndUse(sb, userId, newPassword)
+      setPasswordRecovery(false)
+    },
+    [createAndUse],
+  )
+
+  const vaultExists = useCallback(async () => {
+    const { sb, userId } = session()
+    return (await loadBundle(sb, userId)) !== null
+  }, [])
+
+  const regenerateRecoveryCode = useCallback(async (password: string) => {
+    const { sb, userId } = session()
+    const bundle = await loadBundle(sb, userId)
+    if (!bundle) throw new Error('Sin llave')
+    const rotated = await rotateRecoveryCode(bundle, password)
+    await saveBundle(sb, userId, rotated.bundle)
+    setRecoveryCode(rotated.recoveryCode)
+  }, [])
+
+  const ready =
+    account.status !== 'checking' &&
+    vault !== 'checking' &&
+    (vault === 'locked' || vault === 'setup' || sync !== 'connecting' || data.settings.onboarded)
 
   const store = useMemo<Store>(
     () => ({
@@ -288,6 +484,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       passwordRecovery,
       finishPasswordRecovery: () => setPasswordRecovery(false),
       signOut,
+      vault,
+      recoveryCode,
+      acknowledgeRecoveryCode: () => setRecoveryCode(null),
+      unlockVault,
+      setupVault,
+      recoverAccount,
+      startOver,
+      regenerateRecoveryCode,
+      vaultExists,
       addTransaction: (tx) => dispatch({ type: 'addTx', tx }),
       updateTransaction: (id, tx) => dispatch({ type: 'updateTx', id, tx }),
       deleteTransaction: (id) => {
@@ -300,7 +505,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       upsertCategory: (category) => dispatch({ type: 'upsertCategory', category }),
       replaceAll: (next) => dispatch({ type: 'replaceAll', data: next }),
     }),
-    [data, ready, sync, account, withoutAccount, setWithoutAccount, signOut, passwordRecovery],
+    [
+      data,
+      ready,
+      sync,
+      account,
+      withoutAccount,
+      setWithoutAccount,
+      signOut,
+      passwordRecovery,
+      vault,
+      recoveryCode,
+      unlockVault,
+      setupVault,
+      recoverAccount,
+      startOver,
+      regenerateRecoveryCode,
+      vaultExists,
+    ],
   )
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>

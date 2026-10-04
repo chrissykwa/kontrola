@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Cloud } from './cloud'
+import { decryptJSON, encryptJSON } from './crypto'
 import { normalize } from './storage'
 import type { AppData, Category, Settings, Transaction } from './types'
 
@@ -7,101 +8,112 @@ import type { AppData, Category, Settings, Transaction } from './types'
  * Guardado en Supabase: tablas `settings`, `categories` y `transactions`
  * (ver supabase/schema.sql). Igual que en la nube de claude.ai, se sube solo
  * lo que cambió, agrupando ráfagas de cambios en una sola pasada.
+ *
+ * Todo el contenido viaja cifrado en la columna `payload` con la llave del usuario
+ * (ver crypto.ts). En la base solo quedan a la vista el id de cada fila, su orden y
+ * cuándo se creó o modificó.
  */
 
-// ---------- Conversión entre la app y las filas de la base ----------
+// ---------- Filas de la base ----------
+
+/** Columnas en texto plano: solo existen en datos anteriores al cifrado. */
+const PLAIN_SETTINGS = { opening_balance: null, monthly_budget: null, theme: null, theme_chosen: null, onboarded: null }
+const PLAIN_CATEGORY = { name: null, icon: null, color: null, kind: null, budget: null, archived: null }
+const PLAIN_TX = { type: null, amount: null, category_id: null, note: null, date: null }
 
 export interface SettingsRow {
   user_id: string
-  opening_balance: number
-  monthly_budget: number | null
-  theme: string
-  theme_chosen: boolean
-  onboarded: boolean
+  payload: string | null
+  opening_balance?: number | null
+  monthly_budget?: number | null
+  theme?: string | null
+  theme_chosen?: boolean | null
+  onboarded?: boolean | null
 }
 
 export interface CategoryRow {
   user_id: string
   id: string
-  name: string
-  icon: string
-  color: string
-  kind: string
-  budget: number
-  archived: boolean
   position: number
+  payload: string | null
+  name?: string | null
+  icon?: string | null
+  color?: string | null
+  kind?: string | null
+  budget?: number | null
+  archived?: boolean | null
 }
 
 export interface TransactionRow {
   user_id: string
   id: string
-  type: string
-  amount: number
-  category_id: string | null
-  note: string
-  date: string
   created_ms: number
+  payload: string | null
+  type?: string | null
+  amount?: number | null
+  category_id?: string | null
+  note?: string | null
+  date?: string | null
 }
 
-export const settingsToRow = (userId: string, s: Settings): SettingsRow => ({
-  user_id: userId,
-  opening_balance: s.openingBalance,
-  monthly_budget: s.monthlyBudget,
-  theme: s.theme,
-  theme_chosen: s.themeChosen === true,
-  onboarded: s.onboarded,
-})
+/** Contexto autenticado de cada registro cifrado: no se puede copiar a otra fila u otro usuario. */
+const ctx = {
+  settings: (uid: string) => `settings:${uid}`,
+  category: (uid: string, id: string) => `categories:${uid}:${id}`,
+  tx: (uid: string, id: string) => `transactions:${uid}:${id}`,
+}
 
-export const rowToSettings = (r: SettingsRow) => ({
-  openingBalance: Number(r.opening_balance),
-  monthlyBudget: r.monthly_budget == null ? null : Number(r.monthly_budget),
-  theme: r.theme,
-  themeChosen: r.theme_chosen,
-  onboarded: r.onboarded,
-})
+export async function settingsToRow(key: CryptoKey, userId: string, s: Settings): Promise<SettingsRow> {
+  return { user_id: userId, payload: await encryptJSON(key, s, ctx.settings(userId)), ...PLAIN_SETTINGS }
+}
 
-export const categoryToRow = (userId: string, c: Category, position: number): CategoryRow => ({
-  user_id: userId,
-  id: c.id,
-  name: c.name,
-  icon: c.icon,
-  color: c.color,
-  kind: c.kind,
-  budget: c.budget,
-  archived: c.archived === true,
-  position,
-})
+export async function categoryToRow(key: CryptoKey, userId: string, c: Category, position: number): Promise<CategoryRow> {
+  const { id, ...rest } = c
+  return { user_id: userId, id, position, payload: await encryptJSON(key, rest, ctx.category(userId, id)), ...PLAIN_CATEGORY }
+}
 
-export const rowToCategory = (r: CategoryRow) => ({
-  id: r.id,
-  name: r.name,
-  icon: r.icon,
-  color: r.color,
-  kind: r.kind,
-  budget: Number(r.budget),
-  archived: r.archived,
-})
+export async function txToRow(key: CryptoKey, userId: string, t: Transaction): Promise<TransactionRow> {
+  const { id, createdAt, ...rest } = t
+  return {
+    user_id: userId,
+    id,
+    created_ms: createdAt,
+    payload: await encryptJSON(key, rest, ctx.tx(userId, id)),
+    ...PLAIN_TX,
+  }
+}
 
-export const txToRow = (userId: string, t: Transaction): TransactionRow => ({
-  user_id: userId,
-  id: t.id,
-  type: t.type,
-  amount: t.amount,
-  category_id: t.categoryId,
-  note: t.note,
-  date: t.date,
-  created_ms: t.createdAt,
-})
+// Lectura: filas cifradas, o en texto plano si son anteriores al cifrado.
 
-export const rowToTx = (r: TransactionRow) => ({
-  id: r.id,
-  type: r.type,
-  amount: Number(r.amount),
-  categoryId: r.category_id,
-  note: r.note,
-  date: r.date,
-  createdAt: Number(r.created_ms),
-})
+export async function rowToSettings(key: CryptoKey, r: SettingsRow): Promise<unknown> {
+  if (r.payload) return decryptJSON(key, r.payload, ctx.settings(r.user_id))
+  return {
+    openingBalance: Number(r.opening_balance ?? 0),
+    monthlyBudget: r.monthly_budget == null ? null : Number(r.monthly_budget),
+    theme: r.theme,
+    themeChosen: r.theme_chosen,
+    onboarded: r.onboarded,
+  }
+}
+
+export async function rowToCategory(key: CryptoKey, r: CategoryRow): Promise<unknown> {
+  if (r.payload) return { id: r.id, ...(await decryptJSON<object>(key, r.payload, ctx.category(r.user_id, r.id))) }
+  return { id: r.id, name: r.name, icon: r.icon, color: r.color, kind: r.kind, budget: Number(r.budget ?? 0), archived: r.archived }
+}
+
+export async function rowToTx(key: CryptoKey, r: TransactionRow): Promise<unknown> {
+  const createdAt = Number(r.created_ms)
+  if (r.payload) return { id: r.id, createdAt, ...(await decryptJSON<object>(key, r.payload, ctx.tx(r.user_id, r.id))) }
+  return {
+    id: r.id,
+    type: r.type,
+    amount: Number(r.amount),
+    categoryId: r.category_id ?? null,
+    note: r.note ?? '',
+    date: r.date,
+    createdAt,
+  }
+}
 
 // ---------- Qué cambió entre dos estados ----------
 
@@ -152,7 +164,7 @@ function check<T extends { error: unknown }>(res: T): T {
   return res
 }
 
-export function supabaseCloud(sb: SupabaseClient, userId: string, onIdle: () => void): Cloud {
+export function supabaseCloud(sb: SupabaseClient, userId: string, key: CryptoKey, onIdle: () => void): Cloud {
   /** Estado que ya está guardado en Supabase. */
   let base: AppData | null = null
   /** Estado más reciente de la app. */
@@ -160,20 +172,23 @@ export function supabaseCloud(sb: SupabaseClient, userId: string, onIdle: () => 
   let running: Promise<void> | null = null
   let timer: number | undefined
   let retry: number | undefined
+  /** La última carga encontró filas en texto plano: hay que subir todo cifrado. */
+  let plaintextFound = false
 
   async function apply(c: Changes) {
     if (c.settings) {
-      check(await sb.from('settings').upsert(settingsToRow(userId, c.settings), { onConflict: 'user_id' }))
+      check(await sb.from('settings').upsert(await settingsToRow(key, userId, c.settings), { onConflict: 'user_id' }))
     }
     if (c.categories?.length) {
-      const rows = c.categories.map((cat, i) => categoryToRow(userId, cat, i))
+      const rows = await Promise.all(c.categories.map((cat, i) => categoryToRow(key, userId, cat, i)))
       check(await sb.from('categories').upsert(rows, { onConflict: 'user_id,id' }))
     }
     for (const ids of chunks(c.deletedCategories)) {
       check(await sb.from('categories').delete().eq('user_id', userId).in('id', ids))
     }
     for (const list of chunks(c.upsertTx)) {
-      check(await sb.from('transactions').upsert(list.map((t) => txToRow(userId, t)), { onConflict: 'user_id,id' }))
+      const rows = await Promise.all(list.map((t) => txToRow(key, userId, t)))
+      check(await sb.from('transactions').upsert(rows, { onConflict: 'user_id,id' }))
     }
     for (const ids of chunks(c.deletedTx)) {
       check(await sb.from('transactions').delete().eq('user_id', userId).in('id', ids))
@@ -212,28 +227,33 @@ export function supabaseCloud(sb: SupabaseClient, userId: string, onIdle: () => 
       if (!settingsRow) return null
 
       const cats = check(await sb.from('categories').select('*').eq('user_id', userId).order('position'))
-      const transactions: TransactionRow[] = []
+      const txRows: TransactionRow[] = []
       for (let from = 0; ; from += PAGE) {
         const page = check(
           await sb
             .from('transactions')
             .select('*')
             .eq('user_id', userId)
-            .order('date')
+            .order('created_ms')
             .order('id')
             .range(from, from + PAGE - 1),
         )
         const rows = (page.data ?? []) as TransactionRow[]
-        transactions.push(...rows)
+        txRows.push(...rows)
         if (rows.length < PAGE) break
       }
+      const catRows = (cats.data ?? []) as CategoryRow[]
 
-      const data = normalize({
-        settings: rowToSettings(settingsRow),
-        categories: ((cats.data ?? []) as CategoryRow[]).map(rowToCategory),
-        transactions: transactions.map(rowToTx),
-      })
-      base = latest = data
+      const [settings, categories, transactions] = await Promise.all([
+        rowToSettings(key, settingsRow),
+        Promise.all(catRows.map((r) => rowToCategory(key, r))),
+        Promise.all(txRows.map((r) => rowToTx(key, r))),
+      ])
+      const data = normalize({ settings, categories, transactions })
+
+      plaintextFound = !settingsRow.payload || catRows.some((r) => !r.payload) || txRows.some((r) => !r.payload)
+      // Con datos en texto plano, la próxima subida reescribe todo cifrado.
+      base = latest = plaintextFound ? null : data
       return data
     },
 
@@ -251,5 +271,7 @@ export function supabaseCloud(sb: SupabaseClient, userId: string, onIdle: () => 
     },
 
     hasPendingWrites: () => base !== latest || running !== null,
+
+    needsFullUpload: () => plaintextFound,
   }
 }
