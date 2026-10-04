@@ -105,7 +105,8 @@ export function Home() {
               const c = cats.get(id)
               const budget = c?.budget ?? 0
               return (
-                <li key={id} className="cat-list__item">
+                <li key={id}>
+                  <button type="button" className="cat-list__item rank__item--btn" onClick={() => ui.openCategory(id, month)}>
                   <CategoryIcon category={c} size="sm" />
                   <div className="cat-list__main">
                     <div className="cat-list__row">
@@ -116,6 +117,8 @@ export function Home() {
                       <Meter value={spent} max={budget} status={budgetStatus(spent, budget)} label={`Presupuesto ${c?.name}`} />
                     )}
                   </div>
+                  <ChevronRight size={16} className="rank__chevron" aria-hidden="true" />
+                  </button>
                 </li>
               )
             })}

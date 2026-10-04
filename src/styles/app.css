@@ -976,6 +976,72 @@ fieldset {
   white-space: nowrap;
 }
 
+/* Filas de categoría que abren su desglose */
+.rank__item--btn {
+  width: 100%;
+  padding: 6px 0;
+  margin: -6px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur) var(--ease);
+}
+
+.rank__item--btn:active {
+  background: var(--surface);
+}
+
+.rank__item--btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+.rank__chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* Desglose de una categoría (panel inferior) */
+.cat-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.cat-detail__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.cat-detail__total {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.cat-detail__budget {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cat-detail__heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-3);
+}
+
 .cat-list .meter {
   height: 6px;
 }
@@ -1526,10 +1592,11 @@ fieldset {
 .sheet {
   padding: 0;
   border: 0;
-  margin: auto auto 0;
+  /* --kb: alto del teclado en pantalla (lo mide Sheet.tsx); el panel queda justo encima. */
+  margin: auto auto var(--kb, 0px);
   width: 100%;
   max-width: 560px;
-  max-height: 92dvh;
+  max-height: min(92dvh, calc(var(--vvh, 100dvh) - 12px));
   background: transparent;
   color: var(--text);
   overflow: visible;
@@ -1544,7 +1611,7 @@ fieldset {
 .sheet__panel {
   background: var(--bg);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  max-height: 92dvh;
+  max-height: min(92dvh, calc(var(--vvh, 100dvh) - 12px));
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);

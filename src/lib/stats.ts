@@ -44,6 +44,42 @@ export function monthSummary(data: AppData, key: MonthKey): MonthSummary {
   return { spent, income, byCategory, daily, expenseCount }
 }
 
+export interface DetailGroup {
+  /** Detalle tal como se escribió la última vez (o "Sin detalle"). */
+  label: string
+  count: number
+  total: number
+}
+
+export interface CategoryBreakdown {
+  /** Gastos de la categoría en el mes, del más reciente al más antiguo. */
+  transactions: Transaction[]
+  total: number
+  /** Gastos agrupados por detalle (sin distinguir mayúsculas), del que suma más al que menos. */
+  byDetail: DetailGroup[]
+}
+
+/** Desglose de una categoría en un mes. `categoryId` es la llave de `monthSummary().byCategory`. */
+export function categoryBreakdown(data: AppData, key: MonthKey, categoryId: string): CategoryBreakdown {
+  const transactions = transactionsOfMonth(data, key)
+    .filter((t) => t.type === 'expense' && (t.categoryId ?? 'otros') === categoryId)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+  const groups = new Map<string, DetailGroup>()
+  for (const t of transactions) {
+    const note = t.note.trim()
+    const id = note.toLocaleLowerCase('es')
+    const g = groups.get(id) ?? { label: note || 'Sin detalle', count: 0, total: 0 }
+    g.count++
+    g.total += t.amount
+    groups.set(id, g)
+  }
+  return {
+    transactions,
+    total: transactions.reduce((a, t) => a + t.amount, 0),
+    byDetail: [...groups.values()].sort((a, b) => b.total - a.total || b.count - a.count),
+  }
+}
+
 /** "Otros" / "Otros ingresos": el cajón de sastre que siempre va al final de la lista. */
 export function isCatchAll(c: Category): boolean {
   return c.id === 'otros' || c.id === 'otros-ingresos' || /^otros?\b/i.test(c.name.trim())

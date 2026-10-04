@@ -5,15 +5,17 @@ import { CategoryIcon } from '../components/Icon'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
 import { Meter, MonthSwitcher, StatusBadge } from '../components/ui'
-import { currentMonth, today } from '../lib/dates'
+import { currentMonth, monthLabel, today } from '../lib/dates'
 import { formatCLP, formatDigits } from '../lib/money'
 import { budgetStatus, categoryBudgetSum, expenseCategories, monthPace, monthSummary } from '../lib/stats'
 import type { Category } from '../lib/types'
 import { useStore } from '../state/store'
+import { useUI } from '../state/ui'
 
 export function Budget() {
   const { data, updateSettings, upsertCategory } = useStore()
   const toast = useToast()
+  const ui = useUI()
   const [month, setMonth] = useState(currentMonth())
   const [editing, setEditing] = useState<Category | 'total' | null>(null)
   const [draft, setDraft] = useState<number | null>(null)
@@ -155,6 +157,19 @@ export function Budget() {
           <button type="submit" className="btn btn--primary btn--block">
             Guardar
           </button>
+          {editing && editing !== 'total' && (summary.byCategory.get(editing.id) ?? 0) > 0 && (
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                const id = editing.id
+                setEditing(null)
+                ui.openCategory(id, month)
+              }}
+            >
+              Ver en qué se gastó en {monthLabel(month).split(' ')[0].toLowerCase()}
+            </button>
+          )}
         </form>
       </Sheet>
     </div>

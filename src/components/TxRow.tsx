@@ -8,16 +8,19 @@ export function TxRow({
   tx,
   category,
   showDate = false,
+  showCategory = true,
   onSelect,
 }: {
   tx: Transaction
   category: Category | undefined
   showDate?: boolean
+  /** false cuando ya se está viendo una sola categoría (no repetir su nombre). */
+  showCategory?: boolean
   onSelect: (tx: Transaction) => void
 }) {
   const isAdjustment = tx.type === 'adjustment'
   const title = tx.note || (isAdjustment ? 'Ajuste de saldo' : category?.name ?? 'Sin categoría')
-  const subtitle = [isAdjustment ? 'Ajuste' : tx.note ? category?.name : null, showDate ? shortDayLabel(tx.date) : null]
+  const subtitle = [isAdjustment ? 'Ajuste' : tx.note && showCategory ? category?.name : null, showDate ? shortDayLabel(tx.date) : null]
     .filter(Boolean)
     .join(' · ')
   const amount =
