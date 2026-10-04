@@ -1,12 +1,22 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
-import { connectCloud, type Cloud } from '../lib/cloud'
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
+import { connectClaudeCloud, type Cloud } from '../lib/cloud'
+import { createInitialData } from '../lib/defaults'
 import { localStore, newId } from '../lib/storage'
+import { getSupabase, supabaseConfigured } from '../lib/supabase'
+import { supabaseCloud } from '../lib/supabaseCloud'
 import type { AppData, Category, Settings, Transaction } from '../lib/types'
 
 export type TxInput = Omit<Transaction, 'id' | 'createdAt'>
 
 /** Dónde quedan guardados los datos. */
 export type SyncMode = 'connecting' | 'cloud' | 'local'
+
+/** Cuenta de Supabase. `none`: esta versión no usa cuentas (claude.ai o sitio sin Supabase). */
+export type Account =
+  | { status: 'none' }
+  | { status: 'checking' }
+  | { status: 'signed-out' }
+  | { status: 'signed-in'; email: string }
 
 type Action =
   | { type: 'addTx'; tx: TxInput }
@@ -54,6 +64,11 @@ interface Store {
   /** false mientras se traen los datos de la cuenta y no hay copia local que mostrar. */
   ready: boolean
   sync: SyncMode
+  account: Account
+  /** El usuario eligió usar la app sin cuenta en este dispositivo. */
+  withoutAccount: boolean
+  setWithoutAccount(value: boolean): void
+  signOut(): Promise<void>
   addTransaction(tx: TxInput): void
   updateTransaction(id: string, tx: TxInput): void
   deleteTransaction(id: string): Transaction | undefined
@@ -73,65 +88,156 @@ const NOTHING: AppData = {
   transactions: [],
 }
 
+/** Hay cambios hechos en este dispositivo que todavía no llegan a la nube (ej: sin internet). */
+const UNSYNCED_KEY = 'kontrola:sin-sincronizar'
+const NO_ACCOUNT_KEY = 'kontrola:sin-cuenta'
+
+const readFlag = (key: string) => {
+  try {
+    return localStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+const writeFlag = (key: string, on: boolean) => {
+  try {
+    if (on) localStorage.setItem(key, '1')
+    else localStorage.removeItem(key)
+  } catch {
+    // almacenamiento bloqueado: no es crítico
+  }
+}
+
 const insideClaude = () => typeof (window as { claude?: { use?: unknown } }).claude?.use === 'function'
+const usesAccounts = () => !insideClaude() && supabaseConfigured
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, dispatch] = useReducer(reducer, undefined, () => localStore.load())
-  const [sync, setSync] = useState<SyncMode>(() => (insideClaude() ? 'connecting' : 'local'))
+  const [sync, setSync] = useState<SyncMode>(() => (insideClaude() || supabaseConfigured ? 'connecting' : 'local'))
+  const [account, setAccount] = useState<Account>(() => (usesAccounts() ? { status: 'checking' } : { status: 'none' }))
+  const [withoutAccount, setWithoutAccountState] = useState(() => readFlag(NO_ACCOUNT_KEY))
+
   const cloud = useRef<Cloud | null>(null)
   /** Último estado que coincide con lo guardado en la nube. */
   const synced = useRef<AppData | null>(null)
+  /** Cómo reconectar si la primera carga falló (ej: se abrió sin internet). */
+  const connector = useRef<(() => Promise<Cloud | null>) | null>(null)
+  const attachedUser = useRef<string | null>(null)
+  const latest = useRef(data)
+  latest.current = data
+  const lastLocal = useRef(data)
 
-  // Conectar con la cuenta y traer los datos guardados.
-  useEffect(() => {
-    let cancelled = false
-    connectCloud().then(async (c) => {
-      if (cancelled) return
+  const onIdle = useCallback(() => writeFlag(UNSYNCED_KEY, false), [])
+
+  /** Conecta con la nube y decide qué datos mandan: los de la nube o cambios pendientes de este dispositivo. */
+  const attach = useCallback(async (connect: () => Promise<Cloud | null>) => {
+    connector.current = connect
+    setSync('connecting')
+    try {
+      const c = await connect()
       if (!c) {
         setSync('local')
         return
       }
-      try {
-        const remote = await c.load()
-        if (cancelled) return
-        cloud.current = c
-        if (remote) {
-          synced.current = remote
-          dispatch({ type: 'replaceAll', data: remote })
-        } else {
-          // Primera vez con la cuenta: se sube lo que haya en este dispositivo.
-          synced.current = NOTHING
-        }
-        setSync('cloud')
-      } catch {
-        setSync('local')
+      const remote = await c.load()
+      const local = latest.current
+      cloud.current = c
+      if (readFlag(UNSYNCED_KEY) && local.settings.onboarded) {
+        // Lo de este dispositivo es más nuevo: se sube encima de lo que hay en la nube.
+        synced.current = remote ?? NOTHING
+      } else if (remote) {
+        synced.current = remote
+        dispatch({ type: 'replaceAll', data: remote })
+      } else {
+        // Primera vez con la cuenta: se sube lo que haya en este dispositivo.
+        synced.current = NOTHING
       }
-    })
-    return () => {
-      cancelled = true
+      setSync('cloud')
+    } catch {
+      setSync('local')
     }
   }, [])
 
+  // Elegir la nube: la cuenta de claude.ai, una cuenta de Supabase o ninguna.
+  useEffect(() => {
+    if (insideClaude()) {
+      void attach(() => connectClaudeCloud(onIdle))
+      return
+    }
+    const sbPromise = getSupabase()
+    if (!sbPromise) return
+    let unsubscribe: (() => void) | undefined
+    let cancelled = false
+
+    void sbPromise.then((sb) => {
+      if (cancelled) return
+      const handle = (user: { id: string; email?: string } | null) => {
+        if (!user) {
+          if (attachedUser.current) {
+            // Cerró sesión: se borra la copia local para que nadie más vea sus datos aquí.
+            attachedUser.current = null
+            cloud.current = null
+            connector.current = null
+            synced.current = null
+            writeFlag(UNSYNCED_KEY, false)
+            const empty = createInitialData()
+            localStore.save(empty)
+            dispatch({ type: 'replaceAll', data: empty })
+          }
+          setAccount({ status: 'signed-out' })
+          setSync('local')
+          return
+        }
+        setAccount({ status: 'signed-in', email: user.email ?? '' })
+        if (attachedUser.current === user.id) return
+        attachedUser.current = user.id
+        void attach(async () => supabaseCloud(sb, user.id, onIdle))
+      }
+      const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
+        // Supabase recomienda no llamar a la base dentro de este callback: se difiere.
+        window.setTimeout(() => handle(session?.user ?? null), 0)
+      })
+      unsubscribe = () => sub.subscription.unsubscribe()
+    })
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
+  }, [attach, onIdle])
+
   // Guardar cada cambio: siempre en el dispositivo y, si hay cuenta, en la nube.
   useEffect(() => {
-    localStore.save(data)
+    if (data !== lastLocal.current) {
+      lastLocal.current = data
+      localStore.save(data)
+    }
     const c = cloud.current
-    if (!c || !synced.current || synced.current === data) return
+    if (!c) {
+      // Con cuenta pero sin conexión: se marca para subirlo apenas se pueda.
+      if (connector.current && synced.current !== data && data.settings.onboarded) writeFlag(UNSYNCED_KEY, true)
+      return
+    }
+    if (!synced.current || synced.current === data) return
     // No sube el estado vacío previo a la bienvenida (sí sube un "Borrar todo").
     if (synced.current === NOTHING && !data.settings.onboarded) return
+    writeFlag(UNSYNCED_KEY, true)
     c.save(synced.current, data)
     synced.current = data
   }, [data, sync])
 
-  // Al volver a la app (ej: la usaste en otro dispositivo), refresca desde la nube.
+  // Al volver a la app: reintenta la conexión o trae lo que se hizo en otro dispositivo.
   useEffect(() => {
-    const onVisible = async () => {
+    const refresh = async () => {
       const c = cloud.current
       if (document.visibilityState === 'hidden') {
         void c?.flush()
         return
       }
-      if (!c || c.hasPendingWrites()) return
+      if (!c) {
+        if (connector.current) void attach(connector.current)
+        return
+      }
+      if (c.hasPendingWrites()) return
       try {
         const remote = await c.load()
         if (!remote || c.hasPendingWrites()) return
@@ -142,17 +248,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // sin conexión: se sigue con lo que hay
       }
     }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    const onOnline = () => {
+      if (!cloud.current && connector.current) void attach(connector.current)
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('online', onOnline)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [attach])
+
+  const setWithoutAccount = useCallback((value: boolean) => {
+    writeFlag(NO_ACCOUNT_KEY, value)
+    setWithoutAccountState(value)
   }, [])
 
-  const ready = sync !== 'connecting' || data.settings.onboarded
+  const signOut = useCallback(async () => {
+    await cloud.current?.flush()
+    const sb = await getSupabase()
+    await sb?.auth.signOut()
+  }, [])
+
+  const ready = account.status !== 'checking' && (sync !== 'connecting' || data.settings.onboarded)
 
   const store = useMemo<Store>(
     () => ({
       data,
       ready,
       sync,
+      account,
+      withoutAccount,
+      setWithoutAccount,
+      signOut,
       addTransaction: (tx) => dispatch({ type: 'addTx', tx }),
       updateTransaction: (id, tx) => dispatch({ type: 'updateTx', id, tx }),
       deleteTransaction: (id) => {
@@ -165,7 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       upsertCategory: (category) => dispatch({ type: 'upsertCategory', category }),
       replaceAll: (next) => dispatch({ type: 'replaceAll', data: next }),
     }),
-    [data, ready, sync],
+    [data, ready, sync, account, withoutAccount, setWithoutAccount, signOut],
   )
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>

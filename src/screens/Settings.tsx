@@ -6,6 +6,8 @@ import {
   Download,
   FileSpreadsheet,
   HardDrive,
+  LogIn,
+  LogOut,
   Landmark,
   Plus,
   Scale,
@@ -73,7 +75,7 @@ type SheetState =
   | null
 
 export function Settings() {
-  const { data, sync, updateSettings, replaceAll } = useStore()
+  const { data, sync, account, setWithoutAccount, signOut, updateSettings, replaceAll } = useStore()
   const ui = useUI()
   const toast = useToast()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -216,7 +218,44 @@ export function Settings() {
         <h2 id="s-data" className="settings-group__title">
           Tus datos
         </h2>
-        {sync === 'cloud' ? (
+        {account.status === 'signed-in' ? (
+          <div className="card card--list">
+            <div className="settings-row is-static">
+              <Cloud size={20} aria-hidden="true" />
+              <span className="settings-row__text">
+                <span className="truncate">{account.email}</span>
+                <span className="muted small">
+                  {sync === 'cloud'
+                    ? 'Sincronizado: tus datos están en tu cuenta'
+                    : sync === 'connecting'
+                      ? 'Conectando…'
+                      : 'Sin conexión: se guardan aquí y se suben al volver'}
+                </span>
+              </span>
+            </div>
+            <button
+              type="button"
+              className="settings-row"
+              onClick={async () => {
+                await signOut()
+                toast({ message: 'Sesión cerrada' })
+              }}
+            >
+              <LogOut size={20} aria-hidden="true" />
+              <span className="settings-row__text">Cerrar sesión</span>
+            </button>
+          </div>
+        ) : account.status === 'signed-out' ? (
+          <button type="button" className="cta" onClick={() => setWithoutAccount(false)}>
+            <span className="cta__icon" aria-hidden="true">
+              <LogIn size={20} />
+            </span>
+            <span className="cta__text">
+              <span className="cta__title">Entrar con tu correo</span>
+              <span className="muted small">Para tener tus datos en todos tus dispositivos</span>
+            </span>
+          </button>
+        ) : sync === 'cloud' ? (
           <p className="sync-status sync-status--cloud">
             <Cloud size={18} aria-hidden="true" />
             Guardado en tu cuenta de Claude. Abre el mismo enlace en cualquier dispositivo y verás tus datos.

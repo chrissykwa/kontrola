@@ -56,8 +56,8 @@ async function use<T>(name: string): Promise<T | null> {
   }
 }
 
-/** Conecta con el almacenamiento de la cuenta, o null si la app corre fuera de claude.ai. */
-export async function connectCloud(): Promise<Cloud | null> {
+/** Conecta con el almacenamiento de la cuenta de claude.ai. `onIdle` avisa cuando todo quedó guardado. */
+export async function connectClaudeCloud(onIdle: () => void): Promise<Cloud | null> {
   const [db, user] = await Promise.all([use<HostDB>('db'), use<HostUser>('user')])
   if (!db || !user) return null
   const uid = await user.id().catch(() => null)
@@ -72,6 +72,7 @@ export async function connectCloud(): Promise<Cloud | null> {
   let timer: number | undefined
 
   const run = async () => {
+    let failed = false
     while (dirty.size) {
       const [key, write] = dirty.entries().next().value as [string, () => Promise<void>]
       dirty.delete(key)
@@ -80,10 +81,13 @@ export async function connectCloud(): Promise<Cloud | null> {
       } catch {
         // Un reintento corto ante fallas transitorias; si vuelve a fallar, queda en localStorage.
         await new Promise((r) => setTimeout(r, 800 + Math.random() * 400))
-        await write().catch(() => undefined)
+        await write().catch(() => {
+          failed = true
+        })
       }
     }
     running = null
+    if (!failed) onIdle()
   }
 
   const schedule = () => {

@@ -4,3 +4,5 @@ dist-single
 *.log
 .DS_Store
 *.tsbuildinfo
+.env
+.env.local
