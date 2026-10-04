@@ -1,7 +1,7 @@
 import { ChartColumn, House, List, Plus, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjustBalance } from './components/AdjustBalance'
-import { Logo } from './components/Logo'
+import { LaunchSplash } from './components/LaunchSplash'
 import { Sheet } from './components/Sheet'
 import { TransactionForm } from './components/TransactionForm'
 import type { Transaction } from './lib/types'
@@ -49,6 +49,15 @@ function useTheme() {
 }
 
 export function App() {
+  return (
+    <>
+      <AppScreens />
+      <LaunchSplash />
+    </>
+  )
+}
+
+function AppScreens() {
   const { data, ready, account, withoutAccount, passwordRecovery, vault, recoveryCode } = useStore()
   const [route, navigate] = useHashRoute()
   const [sheet, setSheet] = useState<SheetState>(null)
@@ -77,14 +86,8 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [sheet])
 
-  if (!ready) {
-    return (
-      <div className="splash" role="status">
-        <Logo size={56} />
-        <span>Cargando tus datos…</span>
-      </div>
-    )
-  }
+  // Mientras tanto se ve la pantalla de apertura (LaunchSplash).
+  if (!ready) return null
 
   if (passwordRecovery) return <NewPassword />
 
