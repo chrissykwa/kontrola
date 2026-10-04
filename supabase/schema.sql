@@ -47,6 +47,30 @@ create table if not exists public.transactions (
 
 create index if not exists transactions_user_date_idx on public.transactions (user_id, date);
 
+-- updated_at se actualiza solo en cada cambio
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists settings_updated_at on public.settings;
+create trigger settings_updated_at before update on public.settings
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists categories_updated_at on public.categories;
+create trigger categories_updated_at before update on public.categories
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists transactions_updated_at on public.transactions;
+create trigger transactions_updated_at before update on public.transactions
+  for each row execute function public.set_updated_at();
+
 -- Seguridad: cada usuario ve y modifica solo sus filas
 alter table public.settings enable row level security;
 alter table public.categories enable row level security;

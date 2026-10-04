@@ -26,32 +26,30 @@ Tu control de gastos personal: anotas cada gasto en segundos, se descuenta de tu
 
 ## Publicarla en Vercel con Supabase
 
-### 1. Crear la base de datos (Supabase, gratis)
+### 1. Base de datos (Supabase) — ya creada
 
-1. Crea una cuenta en [supabase.com](https://supabase.com) y un proyecto nuevo (región **South America (São Paulo)**, la más cercana a Chile).
-2. **SQL Editor → New query**: pega el contenido de [`supabase/schema.sql`](supabase/schema.sql) y toca **Run**. Crea las tablas y las reglas para que cada persona vea solo sus datos.
-3. **Authentication → Emails → Templates**: en **Magic Link** y en **Confirm signup**, agrega el código al cuerpo del correo para poder entrar desde la app instalada en el celular. Por ejemplo:
+Proyecto **kontrola** (`fbnfbqobavsjscdgseim`, región São Paulo) con el esquema de [`supabase/schema.sql`](supabase/schema.sql) aplicado: tablas `settings`, `categories` y `transactions`, reglas RLS y `updated_at` automático. La URL y la clave publishable están en [`.env.production`](.env.production), así que el sitio queda conectado al compilar.
 
-   ```html
-   <h2>Tu código para entrar a Kontrola</h2>
-   <p style="font-size:28px;letter-spacing:6px"><strong>{{ .Token }}</strong></p>
-   <p>O toca este enlace: <a href="{{ .ConfirmationURL }}">Entrar</a></p>
-   ```
-4. **Project Settings → API**: copia la **Project URL** y la clave **anon / publishable**. (La clave anon es pública por diseño; no copies nunca la `service_role`.)
+Para un proyecto nuevo: **SQL Editor → New query**, pega `supabase/schema.sql` y toca **Run**; luego cambia los valores de `.env.production`.
+
+**Falta (se hace a mano en el panel):** en **Authentication → Emails → Templates**, edita **Magic Link** y **Confirm signup** para que el correo traiga el código (necesario para entrar desde la app instalada en el celular). Por ejemplo:
+
+```html
+<h2>Tu código para entrar a Kontrola</h2>
+<p style="font-size:28px;letter-spacing:6px"><strong>{{ .Token }}</strong></p>
+<p>O toca este enlace: <a href="{{ .ConfirmationURL }}">Entrar</a></p>
+```
 
 ### 2. Publicar el sitio (Vercel)
 
 1. Entra a [vercel.com](https://vercel.com) con tu cuenta de GitHub → **Add New → Project** → importa `kontrola`.
-2. En **Environment Variables** agrega:
-   - `VITE_SUPABASE_URL` → la Project URL
-   - `VITE_SUPABASE_ANON_KEY` → la clave anon / publishable
-3. **Deploy**. Vercel detecta Vite solo (`npm run build`, carpeta `dist`). Cada cambio en `main` se publica automáticamente.
+2. **Deploy**, sin cambiar nada: Vercel detecta Vite (`npm run build`, carpeta `dist`) y toma la conexión a Supabase de `.env.production`. Cada cambio en `main` se publica automáticamente.
 
 ### 3. Conectar ambos
 
 En Supabase, **Authentication → URL Configuration**: pon la dirección de Vercel (ej. `https://kontrola.vercel.app`) en **Site URL** y también en **Redirect URLs**. Así el enlace del correo vuelve a tu sitio.
 
-> Netlify funciona igual: mismas variables de entorno, comando `npm run build` y carpeta `dist`.
+> Netlify funciona igual: comando `npm run build` y carpeta `dist`.
 
 ### Bueno saber
 
