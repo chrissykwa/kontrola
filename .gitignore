@@ -6,3 +6,4 @@ dist-single
 *.tsbuildinfo
 .env
 .env.local
+.env.production

@@ -26,11 +26,13 @@ Tu control de gastos personal: anotas cada gasto en segundos, se descuenta de tu
 
 ## Publicarla en Vercel con Supabase
 
-### 1. Base de datos (Supabase) — ya creada
+### 1. Base de datos (Supabase)
 
-Proyecto **kontrola** (`fbnfbqobavsjscdgseim`, región São Paulo) con el esquema de [`supabase/schema.sql`](supabase/schema.sql) aplicado: tablas `settings`, `categories` y `transactions`, reglas RLS y `updated_at` automático. La URL y la clave publishable están en [`.env.production`](.env.production), así que el sitio queda conectado al compilar.
+1. Crea un proyecto en [supabase.com](https://supabase.com) (región **South America (São Paulo)**, la más cercana a Chile).
+2. **SQL Editor → New query**: pega [`supabase/schema.sql`](supabase/schema.sql) y toca **Run**. Crea las tablas `settings`, `categories` y `transactions`, las reglas RLS (cada usuario ve solo lo suyo) y el `updated_at` automático.
+3. **Project Settings → API Keys**: anota la **Project URL** y la clave **publishable** (o `anon`). Es pública por diseño; nunca uses la `secret` / `service_role`.
 
-Para un proyecto nuevo: **SQL Editor → New query**, pega `supabase/schema.sql` y toca **Run**; luego cambia los valores de `.env.production`.
+> La conexión **no está en el código**: cada copia del proyecto (por ejemplo un fork) usa su propio Supabase, configurado como variables en su Vercel.
 
 **Entrar:** con **correo y contraseña**, todo dentro de la app. Funciona también instalada en la pantalla de inicio del iPhone, y la sesión queda guardada. Alternativas en la misma pantalla:
 
@@ -57,7 +59,12 @@ Ajustes recomendados en **Authentication → Sign In / Providers → Email**:
 ### 2. Publicar el sitio (Vercel)
 
 1. Entra a [vercel.com](https://vercel.com) con tu cuenta de GitHub → **Add New → Project** → importa `kontrola`.
-2. **Deploy**, sin cambiar nada: Vercel detecta Vite (`npm run build`, carpeta `dist`) y toma la conexión a Supabase de `.env.production`. Cada cambio en `main` se publica automáticamente.
+2. En **Environment Variables** agrega (para *Production* y *Preview*):
+   - `VITE_SUPABASE_URL` → la Project URL
+   - `VITE_SUPABASE_ANON_KEY` → la clave publishable
+3. **Deploy**: Vercel detecta Vite (`npm run build`, carpeta `dist`). Cada cambio en `main` se publica automáticamente.
+
+Sin esas variables la app igual funciona, pero guardando solo en el navegador.
 
 ### 3. Conectar ambos
 
