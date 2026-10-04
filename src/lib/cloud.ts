@@ -44,6 +44,8 @@ export interface Cloud {
   /** Espera a que terminen las escrituras pendientes. */
   flush(): Promise<void>
   hasPendingWrites(): boolean
+  /** La nube tiene datos en un formato antiguo: hay que volver a subirlos completos. */
+  needsFullUpload?(): boolean
 }
 
 async function use<T>(name: string): Promise<T | null> {

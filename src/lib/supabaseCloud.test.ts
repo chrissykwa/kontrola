@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createVault } from './crypto'
 import { createInitialData } from './defaults'
 import {
   categoryToRow,
@@ -9,6 +10,7 @@ import {
   rowToTx,
   settingsToRow,
   txToRow,
+  type TransactionRow,
 } from './supabaseCloud'
 import type { AppData, Transaction } from './types'
 
@@ -73,18 +75,57 @@ describe('diffData', () => {
   })
 })
 
-describe('filas de Supabase', () => {
-  it('ida y vuelta sin perder datos', () => {
+describe('filas cifradas de Supabase', () => {
+  it('ida y vuelta sin perder datos, y sin nada legible en la fila', async () => {
+    const { key } = await createVault('clave123')
     const d = base()
-    expect(rowToTx(txToRow('u1', d.transactions[0]))).toEqual(d.transactions[0])
+    const t = d.transactions[0]
+    const row = await txToRow(key, 'u1', t)
+    expect(row.payload).toMatch(/^v1:/)
+    expect(row.amount).toBeNull()
+    expect(row.note).toBeNull()
+    expect(row.date).toBeNull()
+    expect(JSON.stringify(row)).not.toContain('Chicle')
+    expect(await rowToTx(key, row)).toEqual(t)
+
     const cat = d.categories[0]
-    expect(rowToCategory(categoryToRow('u1', cat, 0))).toEqual({ ...cat, archived: false })
+    const catRow = await categoryToRow(key, 'u1', cat, 0)
+    expect(catRow.name).toBeNull()
+    expect(await rowToCategory(key, catRow)).toEqual(cat)
+
     const s = { ...d.settings, monthlyBudget: 500_000 }
-    expect(rowToSettings(settingsToRow('u1', s))).toEqual({ ...s, themeChosen: false })
+    const sRow = await settingsToRow(key, 'u1', s)
+    expect(sRow.opening_balance).toBeNull()
+    expect(await rowToSettings(key, sRow)).toEqual(s)
   })
 
-  it('los montos grandes vuelven como número', () => {
-    const row = { ...txToRow('u1', tx('x')), amount: '1118294' as unknown as number }
-    expect(rowToTx(row).amount).toBe(1_118_294)
+  it('una fila cifrada de otro usuario no se puede leer como propia', async () => {
+    const { key } = await createVault('clave123')
+    const row = await txToRow(key, 'u1', tx('a'))
+    await expect(rowToTx(key, { ...row, user_id: 'u2' })).rejects.toThrow()
+  })
+
+  it('lee filas antiguas en texto plano (para migrarlas)', async () => {
+    const { key } = await createVault('clave123')
+    const legacy: TransactionRow = {
+      user_id: 'u1',
+      id: 'x',
+      created_ms: 5,
+      payload: null,
+      type: 'expense',
+      amount: '1118294' as unknown as number,
+      category_id: 'comida',
+      note: 'Pan',
+      date: '2026-10-01',
+    }
+    expect(await rowToTx(key, legacy)).toEqual({
+      id: 'x',
+      type: 'expense',
+      amount: 1_118_294,
+      categoryId: 'comida',
+      note: 'Pan',
+      date: '2026-10-01',
+      createdAt: 5,
+    })
   })
 })

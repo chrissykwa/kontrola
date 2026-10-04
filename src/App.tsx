@@ -10,6 +10,7 @@ import { Home } from './screens/Home'
 import { Movements } from './screens/Movements'
 import { Login } from './screens/Login'
 import { NewPassword } from './screens/NewPassword'
+import { RecoveryCodeScreen, SetupVaultScreen, UnlockScreen } from './screens/Vault'
 import { Onboarding } from './screens/Onboarding'
 import { Settings } from './screens/Settings'
 import { Stats } from './screens/Stats'
@@ -48,7 +49,7 @@ function useTheme() {
 }
 
 export function App() {
-  const { data, ready, account, withoutAccount, passwordRecovery } = useStore()
+  const { data, ready, account, withoutAccount, passwordRecovery, vault, recoveryCode } = useStore()
   const [route, navigate] = useHashRoute()
   const [sheet, setSheet] = useState<SheetState>(null)
   useTheme()
@@ -88,6 +89,12 @@ export function App() {
   if (passwordRecovery) return <NewPassword />
 
   if (account.status === 'signed-out' && !withoutAccount) return <Login />
+
+  if (account.status === 'signed-in') {
+    if (recoveryCode) return <RecoveryCodeScreen />
+    if (vault === 'locked') return <UnlockScreen />
+    if (vault === 'setup') return <SetupVaultScreen />
+  }
 
   if (!data.settings.onboarded) return <Onboarding />
 

@@ -7,10 +7,12 @@ import {
   FileSpreadsheet,
   HardDrive,
   LogIn,
+  KeyRound,
   LogOut,
   Landmark,
   Plus,
   Scale,
+  ShieldCheck,
   Trash2,
   Upload,
   Wallet,
@@ -21,6 +23,7 @@ import { CategoryEditor } from '../components/CategoryEditor'
 import { CategoryIcon } from '../components/Icon'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
+import { WrongSecretError } from '../lib/crypto'
 import { createInitialData } from '../lib/defaults'
 import { formatCLP } from '../lib/money'
 import { sortCategories } from '../lib/stats'
@@ -72,10 +75,11 @@ type SheetState =
   | { kind: 'opening' }
   | { kind: 'category'; category?: Category; catKind: Category['kind'] }
   | { kind: 'reset' }
+  | { kind: 'new-code' }
   | null
 
 export function Settings() {
-  const { data, sync, account, setWithoutAccount, signOut, updateSettings, replaceAll } = useStore()
+  const { data, sync, account, vault, setWithoutAccount, signOut, regenerateRecoveryCode, updateSettings, replaceAll } = useStore()
   const ui = useUI()
   const toast = useToast()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -213,6 +217,32 @@ export function Settings() {
           ))}
         </div>
       </section>
+
+      {account.status === 'signed-in' && vault === 'ready' && (
+        <section className="settings-group" aria-labelledby="s-security">
+          <h2 id="s-security" className="settings-group__title">
+            Privacidad
+          </h2>
+          <div className="card card--list">
+            <div className="settings-row is-static">
+              <ShieldCheck size={20} aria-hidden="true" />
+              <span className="settings-row__text">
+                <span>Datos cifrados</span>
+                <span className="muted small">
+                  Se cifran en este dispositivo antes de guardarse. Nadie más puede leerlos, ni quien administra la app.
+                </span>
+              </span>
+            </div>
+            <button type="button" className="settings-row" onClick={() => setSheet({ kind: 'new-code' })}>
+              <KeyRound size={20} aria-hidden="true" />
+              <span className="settings-row__text">
+                <span>Nuevo código de recuperación</span>
+                <span className="muted small">Si perdiste el anterior. El código viejo deja de servir.</span>
+              </span>
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="settings-group" aria-labelledby="s-data">
         <h2 id="s-data" className="settings-group__title">
@@ -411,6 +441,77 @@ export function Settings() {
           </button>
         </form>
       </Sheet>
+
+      <Sheet open={sheet?.kind === 'new-code'} title="Nuevo código de recuperación" onClose={() => setSheet(null)}>
+        {sheet?.kind === 'new-code' && (
+          <NewRecoveryCodeForm
+            email={account.status === 'signed-in' ? account.email : ''}
+            onSubmit={regenerateRecoveryCode}
+            onDone={() => setSheet(null)}
+          />
+        )}
+      </Sheet>
     </div>
+  )
+}
+
+/** Pide la contraseña y genera un código nuevo (se muestra en pantalla completa). */
+function NewRecoveryCodeForm({
+  email,
+  onSubmit,
+  onDone,
+}: {
+  email: string
+  onSubmit: (password: string) => Promise<void>
+  onDone: () => void
+}) {
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <form
+      className="form"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setBusy(true)
+        setError(null)
+        try {
+          await onSubmit(password)
+          onDone()
+        } catch (err) {
+          setError(
+            err instanceof WrongSecretError ? 'Esa no es tu contraseña actual.' : 'No se pudo generar el código. Revisa tu conexión.',
+          )
+          setBusy(false)
+        }
+      }}
+    >
+      <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
+      <p className="lead">El código anterior dejará de servir. Confirma tu contraseña para generar uno nuevo.</p>
+      <div className="field">
+        <label htmlFor="new-code-password" className="field__label">
+          Contraseña
+        </label>
+        <input
+          id="new-code-password"
+          className="input"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          data-autofocus=""
+          required
+        />
+      </div>
+      {error && (
+        <p className="alert alert--over" role="alert">
+          <span>{error}</span>
+        </p>
+      )}
+      <button type="submit" className="btn btn--primary btn--block" disabled={busy || !password}>
+        {busy ? 'Generando…' : 'Generar código nuevo'}
+      </button>
+    </form>
   )
 }
