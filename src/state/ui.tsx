@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import type { MonthKey } from '../lib/dates'
 import type { Transaction } from '../lib/types'
 
 export type Route = 'inicio' | 'movimientos' | 'presupuesto' | 'analisis' | 'ajustes'
@@ -40,6 +41,8 @@ export interface UIActions {
   openNewTx(): void
   openEditTx(tx: Transaction): void
   openAdjust(): void
+  /** Desglose de una categoría en un mes (`categoryId` como en `monthSummary().byCategory`). */
+  openCategory(categoryId: string, month: MonthKey): void
 }
 
 export const UIContext = createContext<UIActions | null>(null)

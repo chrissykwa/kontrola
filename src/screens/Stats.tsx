@@ -1,4 +1,4 @@
-import { BarChart3, TrendingDown, TrendingUp } from 'lucide-react'
+import { BarChart3, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ColumnChart, type Column } from '../components/ColumnChart'
 import { CategoryIcon } from '../components/Icon'
@@ -7,10 +7,12 @@ import { currentMonth, daysInMonth, dayLabel, monthLabel, monthShortLabel, shift
 import { formatCLP } from '../lib/money'
 import { monthlyTotals, monthSummary, totalBudget, transactionsOfMonth } from '../lib/stats'
 import { useCategoryMap, useStore } from '../state/store'
+import { useUI } from '../state/ui'
 
 export function Stats() {
   const { data } = useStore()
   const cats = useCategoryMap()
+  const ui = useUI()
   const [month, setMonth] = useState(currentMonth())
 
   const summary = useMemo(() => monthSummary(data, month), [data, month])
@@ -134,13 +136,15 @@ export function Stats() {
           <section className="card">
             <div className="card__head">
               <h2 className="card__title">Por categoría</h2>
+              <span className="muted small">Toca para ver el detalle</span>
             </div>
             <ul className="rank">
               {ranked.map(([id, value]) => {
                 const c = cats.get(id)
                 const share = summary.spent > 0 ? value / summary.spent : 0
                 return (
-                  <li key={id} className="rank__item">
+                  <li key={id}>
+                    <button type="button" className="rank__item rank__item--btn" onClick={() => ui.openCategory(id, month)}>
                     <CategoryIcon category={c} size="sm" />
                     <div className="rank__main">
                       <div className="rank__row">
@@ -153,6 +157,8 @@ export function Stats() {
                         <span className="rank__bar" style={{ width: `${topValue ? (value / topValue) * 100 : 0}%` }} />
                       </span>
                     </div>
+                    <ChevronRight size={16} className="rank__chevron" aria-hidden="true" />
+                    </button>
                   </li>
                 )
               })}

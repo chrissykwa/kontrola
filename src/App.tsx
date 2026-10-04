@@ -1,9 +1,11 @@
 import { ChartColumn, House, List, Plus, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjustBalance } from './components/AdjustBalance'
+import { CategoryDetail } from './components/CategoryDetail'
 import { LaunchSplash } from './components/LaunchSplash'
 import { Sheet } from './components/Sheet'
 import { TransactionForm } from './components/TransactionForm'
+import type { MonthKey } from './lib/dates'
 import type { Transaction } from './lib/types'
 import { Budget } from './screens/Budget'
 import { Home } from './screens/Home'
@@ -14,10 +16,18 @@ import { RecoveryCodeScreen, SetupVaultScreen, UnlockScreen } from './screens/Va
 import { Onboarding } from './screens/Onboarding'
 import { Settings } from './screens/Settings'
 import { Stats } from './screens/Stats'
-import { useStore } from './state/store'
+import { useCategoryMap, useStore } from './state/store'
 import { UIContext, useHashRoute, type Route, type UIActions } from './state/ui'
 
-type SheetState = { kind: 'new' } | { kind: 'edit'; tx: Transaction } | { kind: 'adjust' } | null
+type CategoryRef = { categoryId: string; month: MonthKey }
+
+type SheetState =
+  | { kind: 'new' }
+  // `back`: si se abrió desde el desglose de una categoría, al terminar se vuelve a él.
+  | { kind: 'edit'; tx: Transaction; back?: CategoryRef }
+  | { kind: 'adjust' }
+  | ({ kind: 'category' } & CategoryRef)
+  | null
 
 const NAV: { route: Route; label: string; Icon: typeof House }[] = [
   { route: 'inicio', label: 'Inicio', Icon: House },
@@ -61,6 +71,7 @@ function AppScreens() {
   const { data, ready, account, withoutAccount, passwordRecovery, vault, recoveryCode } = useStore()
   const [route, navigate] = useHashRoute()
   const [sheet, setSheet] = useState<SheetState>(null)
+  const cats = useCategoryMap()
   useTheme()
 
   const actions = useMemo<UIActions>(
@@ -69,6 +80,7 @@ function AppScreens() {
       openNewTx: () => setSheet({ kind: 'new' }),
       openEditTx: (tx) => setSheet({ kind: 'edit', tx }),
       openAdjust: () => setSheet({ kind: 'adjust' }),
+      openCategory: (categoryId, month) => setSheet({ kind: 'category', categoryId, month }),
     }),
     [navigate],
   )
@@ -116,7 +128,12 @@ function AppScreens() {
         ? sheet.tx.type === 'adjustment'
           ? 'Ajuste de saldo'
           : 'Editar movimiento'
-        : 'Cuadrar con el banco'
+        : sheet?.kind === 'category'
+          ? (cats.get(sheet.categoryId)?.name ?? 'Sin categoría')
+          : 'Cuadrar con el banco'
+
+  const closeSheet = () => setSheet(null)
+  const afterEdit = () => setSheet(sheet?.kind === 'edit' && sheet.back ? { kind: 'category', ...sheet.back } : null)
 
   return (
     <UIContext.Provider value={actions}>
@@ -137,11 +154,19 @@ function AppScreens() {
           ))}
         </nav>
 
-        <Sheet open={sheet !== null} title={sheetTitle} onClose={() => setSheet(null)}>
+        <Sheet open={sheet !== null} title={sheetTitle} onClose={closeSheet}>
           {sheet?.kind === 'adjust' ? (
-            <AdjustBalance onDone={() => setSheet(null)} />
+            <AdjustBalance onDone={closeSheet} />
+          ) : sheet?.kind === 'category' ? (
+            <CategoryDetail
+              categoryId={sheet.categoryId}
+              month={sheet.month}
+              onSelectTx={(tx) => setSheet({ kind: 'edit', tx, back: { categoryId: sheet.categoryId, month: sheet.month } })}
+            />
+          ) : sheet?.kind === 'edit' ? (
+            <TransactionForm key={sheet.tx.id} editing={sheet.tx} onDone={afterEdit} />
           ) : sheet ? (
-            <TransactionForm editing={sheet.kind === 'edit' ? sheet.tx : undefined} onDone={() => setSheet(null)} />
+            <TransactionForm onDone={closeSheet} />
           ) : null}
         </Sheet>
       </div>

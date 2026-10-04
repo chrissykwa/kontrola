@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialData } from './defaults'
 import { formatCLP, formatCompact, parseAmount } from './money'
-import { currentBalance, expenseCategories, monthPace, monthSummary, monthlyTotals, noteSuggestions, totalBudget } from './stats'
+import { categoryBreakdown, currentBalance, expenseCategories, monthPace, monthSummary, monthlyTotals, noteSuggestions, totalBudget } from './stats'
 import { exportCSV, importJSON, normalize } from './storage'
 import type { AppData, Transaction } from './types'
 
@@ -118,6 +118,33 @@ describe('historial', () => {
       { key: '2026-08', spent: 0 },
       { key: '2026-09', spent: 2000 },
     ])
+  })
+})
+
+describe('desglose por categoría', () => {
+  it('lista los gastos del mes y los agrupa por detalle', () => {
+    const d = data([
+      tx({ note: 'Uber', amount: 4000, categoryId: 'transporte', date: '2026-09-02' }),
+      tx({ note: 'uber ', amount: 3500, categoryId: 'transporte', date: '2026-09-05' }),
+      tx({ note: 'Metro', amount: 800, categoryId: 'transporte', date: '2026-09-04' }),
+      tx({ note: '', amount: 1000, categoryId: 'transporte', date: '2026-09-01' }),
+      tx({ note: 'Uber', amount: 9000, categoryId: 'transporte', date: '2026-08-30' }),
+      tx({ note: 'Uber', amount: 5000, categoryId: 'comida', date: '2026-09-03' }),
+      tx({ type: 'income', amount: 5000, categoryId: 'transporte', date: '2026-09-03' }),
+    ])
+    const b = categoryBreakdown(d, '2026-09', 'transporte')
+    expect(b.total).toBe(9300)
+    expect(b.transactions.map((t) => t.date)).toEqual(['2026-09-05', '2026-09-04', '2026-09-02', '2026-09-01'])
+    expect(b.byDetail).toEqual([
+      { label: 'uber', count: 2, total: 7500 },
+      { label: 'Sin detalle', count: 1, total: 1000 },
+      { label: 'Metro', count: 1, total: 800 },
+    ])
+  })
+
+  it('los gastos sin categoría van a "otros"', () => {
+    const d = data([tx({ categoryId: null, amount: 700 })])
+    expect(categoryBreakdown(d, '2026-09', 'otros').total).toBe(700)
   })
 })
 
