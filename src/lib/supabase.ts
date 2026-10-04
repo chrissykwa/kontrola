@@ -40,6 +40,23 @@ export function getSupabase(): Promise<SupabaseClient> | null {
 export function authErrorMessage(err: unknown): string {
   const e = err as { message?: string; status?: number; code?: string } | null
   const msg = (e?.message ?? '').toLowerCase()
+  const code = e?.code ?? ''
+  if (code === 'invalid_credentials' || msg.includes('invalid login credentials')) {
+    return 'Correo o contraseña incorrectos.'
+  }
+  if (code === 'user_already_exists' || code === 'email_exists' || msg.includes('already registered')) {
+    return 'Ese correo ya tiene cuenta. Entra con tu contraseña o usa "Olvidé mi contraseña".'
+  }
+  if (code === 'weak_password' || msg.includes('password should be')) {
+    return 'La contraseña es muy corta o débil. Usa al menos 6 caracteres.'
+  }
+  if (code === 'email_not_confirmed' || msg.includes('email not confirmed')) {
+    return 'Falta confirmar tu correo: toca el enlace que te enviamos (una sola vez) y vuelve a entrar.'
+  }
+  if (code === 'same_password') return 'La contraseña nueva debe ser distinta a la anterior.'
+  if (code === 'signup_disabled' || msg.includes('signups not allowed')) {
+    return 'No se pueden crear cuentas nuevas en este momento.'
+  }
   if (e?.status === 429 || msg.includes('rate limit') || msg.includes('security purposes')) {
     return 'Pediste muchos correos seguidos. Espera un minuto e intenta de nuevo.'
   }

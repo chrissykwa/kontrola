@@ -9,6 +9,7 @@ import { Budget } from './screens/Budget'
 import { Home } from './screens/Home'
 import { Movements } from './screens/Movements'
 import { Login } from './screens/Login'
+import { NewPassword } from './screens/NewPassword'
 import { Onboarding } from './screens/Onboarding'
 import { Settings } from './screens/Settings'
 import { Stats } from './screens/Stats'
@@ -47,7 +48,7 @@ function useTheme() {
 }
 
 export function App() {
-  const { data, ready, account, withoutAccount } = useStore()
+  const { data, ready, account, withoutAccount, passwordRecovery } = useStore()
   const [route, navigate] = useHashRoute()
   const [sheet, setSheet] = useState<SheetState>(null)
   useTheme()
@@ -83,6 +84,8 @@ export function App() {
       </div>
     )
   }
+
+  if (passwordRecovery) return <NewPassword />
 
   if (account.status === 'signed-out' && !withoutAccount) return <Login />
 

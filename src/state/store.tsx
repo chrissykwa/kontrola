@@ -68,6 +68,9 @@ interface Store {
   /** El usuario eligió usar la app sin cuenta en este dispositivo. */
   withoutAccount: boolean
   setWithoutAccount(value: boolean): void
+  /** Se abrió el enlace de "Olvidé mi contraseña": hay que pedir una contraseña nueva. */
+  passwordRecovery: boolean
+  finishPasswordRecovery(): void
   signOut(): Promise<void>
   addTransaction(tx: TxInput): void
   updateTransaction(id: string, tx: TxInput): void
@@ -116,6 +119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sync, setSync] = useState<SyncMode>(() => (insideClaude() || supabaseConfigured ? 'connecting' : 'local'))
   const [account, setAccount] = useState<Account>(() => (usesAccounts() ? { status: 'checking' } : { status: 'none' }))
   const [withoutAccount, setWithoutAccountState] = useState(() => readFlag(NO_ACCOUNT_KEY))
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   const cloud = useRef<Cloud | null>(null)
   /** Último estado que coincide con lo guardado en la nube. */
@@ -193,7 +197,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         attachedUser.current = user.id
         void attach(async () => supabaseCloud(sb, user.id, onIdle))
       }
-      const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
+      const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
         // Supabase recomienda no llamar a la base dentro de este callback: se difiere.
         window.setTimeout(() => handle(session?.user ?? null), 0)
       })
@@ -280,6 +285,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       account,
       withoutAccount,
       setWithoutAccount,
+      passwordRecovery,
+      finishPasswordRecovery: () => setPasswordRecovery(false),
       signOut,
       addTransaction: (tx) => dispatch({ type: 'addTx', tx }),
       updateTransaction: (id, tx) => dispatch({ type: 'updateTx', id, tx }),
@@ -293,7 +300,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       upsertCategory: (category) => dispatch({ type: 'upsertCategory', category }),
       replaceAll: (next) => dispatch({ type: 'replaceAll', data: next }),
     }),
-    [data, ready, sync, account, withoutAccount, setWithoutAccount, signOut],
+    [data, ready, sync, account, withoutAccount, setWithoutAccount, signOut, passwordRecovery],
   )
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>

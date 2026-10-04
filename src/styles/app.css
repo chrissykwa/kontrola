@@ -2123,6 +2123,13 @@ button.settings-row:hover {
   color: var(--brand-ink);
 }
 
+.login-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .login-actions {
   display: flex;
   justify-content: space-between;

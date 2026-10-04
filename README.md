@@ -32,9 +32,17 @@ Proyecto **kontrola** (`fbnfbqobavsjscdgseim`, región São Paulo) con el esquem
 
 Para un proyecto nuevo: **SQL Editor → New query**, pega `supabase/schema.sql` y toca **Run**; luego cambia los valores de `.env.production`.
 
-**Entrar:** con el correo de fábrica de Supabase llega un **enlace** para entrar. Funciona aunque lo abras en otro navegador o dispositivo.
+**Entrar:** con **correo y contraseña**, todo dentro de la app. Funciona también instalada en la pantalla de inicio del iPhone, y la sesión queda guardada. Alternativas en la misma pantalla:
 
-**Opcional, código de 6 dígitos:** sirve para entrar desde la app instalada en la pantalla de inicio del iPhone, donde el enlace se abre en Safari y no dentro de la app. Supabase solo deja editar las plantillas con un SMTP propio. Por ejemplo, con Gmail:
+- **Olvidé mi contraseña**: llega un correo; al abrirlo (en cualquier navegador) eliges una contraseña nueva.
+- **Entrar con un enlace por correo**: útil en el navegador. En la app instalada del iPhone el enlace se abre en Safari, por eso ahí conviene la contraseña.
+
+Ajustes recomendados en **Authentication → Sign In / Providers → Email**:
+
+- **Confirm email**: si está activo, al crear la cuenta llega un correo para confirmarla una sola vez. Si lo desactivas, la cuenta queda lista al instante.
+- Cuando ya hayas creado tu cuenta, puedes desactivar **Allow new users to sign up** (en *Sign In / Providers*) para que nadie más pueda crear cuentas en tu proyecto.
+
+**Opcional, código de 6 dígitos por correo:** Supabase solo deja editar las plantillas con un SMTP propio. Por ejemplo, con Gmail:
 
 1. En tu cuenta de Google activa la verificación en dos pasos y crea una **contraseña de aplicación** (Seguridad → Contraseñas de aplicaciones).
 2. En Supabase, **Authentication → Emails → Set up SMTP**: host `smtp.gmail.com`, puerto `465`, usuario y remitente tu Gmail, contraseña la de aplicación, nombre del remitente `Kontrola`.
