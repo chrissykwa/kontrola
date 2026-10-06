@@ -1,13 +1,85 @@
-import { daysInMonth, monthKeyOf, shiftMonth, type MonthKey } from './dates'
-import type { AppData, Category, Transaction } from './types'
+import { daysInMonth, monthKeyOf, shiftMonth, today, type MonthKey } from './dates'
+import type { AppData, Category, MoneyAccount, Transaction } from './types'
 
 /** Efecto de un movimiento sobre el saldo. */
 export function signedAmount(t: Transaction): number {
-  return t.type === 'expense' ? -t.amount : t.amount
+  return t.type === 'expense' ? -t.amount : t.type === 'transfer' ? -t.amount : t.amount
 }
 
 export function currentBalance(data: AppData): number {
-  return data.transactions.reduce((acc, t) => acc + signedAmount(t), data.settings.openingBalance)
+  return data.settings.accounts.filter((a) => a.kind === 'cash').reduce((sum, a) => sum + accountBalance(data, a.id), 0)
+}
+
+export function accountBalance(data: AppData, accountId: string): number {
+  const account = data.settings.accounts.find((a) => a.id === accountId)
+  if (!account) return 0
+  return data.transactions.reduce((sum, t) => {
+    if ((t.accountId ?? 'principal') === accountId) sum += signedAmount(t)
+    if (t.type === 'transfer' && t.toAccountId === accountId) sum += t.amount
+    return sum
+  }, account.openingBalance)
+}
+
+const dayInMonth = (key: MonthKey, day: number) => `${key}-${String(Math.min(day, daysInMonth(key))).padStart(2, '0')}`
+
+export function statementCycle(month: MonthKey, account: MoneyAccount): { closeDate: string; dueDate: string } {
+  const override = account.cycleOverrides?.find((cycle) => cycle.month === month)
+  return {
+    closeDate: override?.closeDate ?? dayInMonth(month, account.closingDay ?? 25),
+    dueDate: override?.dueDate ?? dayInMonth(shiftMonth(month, 1), account.dueDay ?? 10),
+  }
+}
+
+/** La compra entra al cierre próximo; su pago vence el mes siguiente a ese cierre. */
+export function creditCycle(date: string, account: MoneyAccount): { closeDate: string; dueDate: string } {
+  const month = monthKeyOf(date)
+  // El mes anterior puede cerrar en los primeros días del mes actual si el
+  // banco publica un corte excepcional. Buscar en orden evita perder compras.
+  for (let offset = -1; offset <= 2; offset++) {
+    const cycle = statementCycle(shiftMonth(month, offset), account)
+    if (date <= cycle.closeDate) return cycle
+  }
+  return statementCycle(shiftMonth(month, 2), account)
+}
+
+/** Una compra crea deuda completa hoy, pero se factura en cuotas mensuales. */
+export function installmentSchedule(t: Transaction, account: MoneyAccount): { dueDate: string; amount: number }[] {
+  const count = Math.max(1, Math.min(60, Math.round(t.installments ?? 1)))
+  const firstMonth = monthKeyOf(creditCycle(t.date, account).closeDate)
+  const base = Math.floor(t.amount / count)
+  const remainder = t.amount % count
+  return Array.from({ length: count }, (_, index) => ({
+    dueDate: statementCycle(shiftMonth(firstMonth, index), account).dueDate,
+    amount: base + (index < remainder ? 1 : 0),
+  }))
+}
+
+/** Compras de tarjeta agrupadas por vencimiento, menos los pagos asignados a cada ciclo. */
+export function creditBills(data: AppData, accountId: string): { dueDate: string; amount: number; purchases: number }[] {
+  const account = data.settings.accounts.find((a) => a.id === accountId)
+  if (!account || account.kind !== 'credit') return []
+  const bills = new Map<string, { dueDate: string; amount: number; purchases: number }>()
+  if (account.openingBalance < 0) {
+    const dueDate = account.openingDueDate ?? creditCycle(today(), account).dueDate
+    bills.set(dueDate, { dueDate, amount: -account.openingBalance, purchases: 0 })
+  }
+  for (const t of data.transactions) {
+    if (t.type !== 'expense' || (t.accountId ?? 'principal') !== accountId) continue
+    for (const installment of installmentSchedule(t, account)) {
+      const { dueDate } = installment
+      const bill = bills.get(dueDate) ?? { dueDate, amount: 0, purchases: 0 }
+      bill.amount += installment.amount
+      bill.purchases++
+      bills.set(dueDate, bill)
+    }
+  }
+  // Los pagos se aplican primero al vencimiento pendiente más antiguo.
+  let paid = data.transactions.filter((t) => t.type === 'transfer' && t.toAccountId === accountId).reduce((n, t) => n + t.amount, 0)
+  return [...bills.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map((bill) => {
+    const used = Math.min(paid, bill.amount)
+    paid -= used
+    return { ...bill, amount: bill.amount - used }
+  })
 }
 
 export function transactionsOfMonth(data: AppData, key: MonthKey): Transaction[] {

@@ -53,6 +53,8 @@ export function createInitialData(): AppData {
     version: 1,
     settings: {
       openingBalance: 0,
+      accounts: [{ id: 'principal', name: 'Cuenta principal', kind: 'cash', openingBalance: 0 }],
+      incomeSources: [],
       monthlyBudget: null,
       theme: 'light',
       onboarded: false,

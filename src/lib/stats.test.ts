@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { dateLabel } from './dates'
 import { createInitialData } from './defaults'
 import { formatCLP, formatCompact, parseAmount } from './money'
 import { categoryBreakdown, currentBalance, expenseCategories, monthPace, monthSummary, monthlyTotals, noteSuggestions, totalBudget } from './stats'
@@ -22,7 +23,7 @@ function tx(partial: Partial<Transaction>): Transaction {
 
 function data(transactions: Transaction[], patch: Partial<AppData['settings']> = {}): AppData {
   const d = createInitialData()
-  return { ...d, settings: { ...d.settings, ...patch, onboarded: true }, transactions }
+  return { ...d, settings: { ...d.settings, ...patch, accounts: patch.accounts ?? [{ ...d.settings.accounts[0], openingBalance: patch.openingBalance ?? 0 }], onboarded: true }, transactions }
 }
 
 describe('dinero', () => {
@@ -121,6 +122,13 @@ describe('historial', () => {
   })
 })
 
+describe('fechas', () => {
+  it('muestra día y mes, y el año solo si no es el actual', () => {
+    expect(dateLabel('2026-11-10', '2026-10-06')).toBe('10 nov')
+    expect(dateLabel('2027-01-10', '2026-10-06')).toBe('10 ene 2027')
+  })
+})
+
 describe('desglose por categoría', () => {
   it('lista los gastos del mes y los agrupa por detalle', () => {
     const d = data([
@@ -178,7 +186,7 @@ describe('respaldos', () => {
 
   it('exporta CSV con signo y escapando separadores', () => {
     const csv = exportCSV(data([tx({ amount: 500, note: 'pan; queso' })]))
-    expect(csv.split('\n')[1]).toBe('2026-09-10;Gasto;Comida y antojos;"pan; queso";-500')
+    expect(csv.split('\n')[1]).toBe('2026-09-10;Gasto;Comida y antojos;"pan; queso";-500;principal;')
   })
 })
 

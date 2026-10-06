@@ -1,4 +1,42 @@
-export type TxType = 'expense' | 'income' | 'adjustment'
+export type TxType = 'expense' | 'income' | 'adjustment' | 'transfer'
+
+export interface CreditCycleOverride {
+  /** Mes en que cierra el estado de cuenta. */
+  month: string
+  closeDate: string
+  /** Si falta, se usa el día de pago estimado. */
+  dueDate?: string
+}
+
+export interface MoneyAccount {
+  id: string
+  name: string
+  kind: 'cash' | 'credit'
+  /** Saldo de apertura: en tarjetas, negativo significa deuda inicial. */
+  openingBalance: number
+  /** Día de cierre y día de vencimiento del pago, solo para tarjetas. */
+  closingDay?: number
+  dueDay?: number
+  /** Fechas reales publicadas por el banco, que pueden variar cada mes. */
+  cycleOverrides?: CreditCycleOverride[]
+  /** Cuotas sin interés propuestas al registrar una compra; 1 por defecto. */
+  defaultInstallments?: number
+  openingDueDate?: string
+  archived?: boolean
+}
+
+export interface IncomeSource {
+  id: string
+  name: string
+  expectedAmount: number
+  accountId: string
+  recurring: boolean
+  /** Fecha del próximo ingreso esperado. */
+  nextDate: string
+  /** Para ingresos recurrentes: intervalo en meses. */
+  intervalMonths: number
+  archived?: boolean
+}
 
 /** Montos siempre en pesos enteros (CLP no usa decimales). */
 export interface Transaction {
@@ -12,6 +50,14 @@ export interface Transaction {
   /** Fecha local del movimiento, formato YYYY-MM-DD. */
   date: string
   createdAt: number
+  /** Cuenta donde ocurre el gasto o ingreso. Ausente en respaldos antiguos. */
+  accountId?: string
+  /** Destino de una transferencia, incluido el pago de tarjeta. */
+  toAccountId?: string
+  /** Fuente planificada asociada a un ingreso real. */
+  incomeSourceId?: string
+  /** Número de cuotas sin interés. El monto del movimiento es el total de la compra. */
+  installments?: number
 }
 
 export interface Category {
@@ -36,6 +82,8 @@ export interface Settings {
   /** true cuando el usuario eligió el tema en Ajustes (si no, se usa claro). */
   themeChosen?: boolean
   onboarded: boolean
+  accounts: MoneyAccount[]
+  incomeSources: IncomeSource[]
 }
 
 export interface AppData {

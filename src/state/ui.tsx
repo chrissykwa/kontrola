@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { MonthKey } from '../lib/dates'
 import type { Transaction } from '../lib/types'
 
-export type Route = 'inicio' | 'movimientos' | 'presupuesto' | 'analisis' | 'ajustes'
+export type Route = 'inicio' | 'movimientos' | 'presupuesto' | 'analisis' | 'ajustes' | 'cuentas' | 'importar'
 
-const ROUTES: Route[] = ['inicio', 'movimientos', 'presupuesto', 'analisis', 'ajustes']
+const ROUTES: Route[] = ['inicio', 'movimientos', 'presupuesto', 'analisis', 'ajustes', 'cuentas', 'importar']
 
 function readHash(): Route {
   const h = window.location.hash.replace(/^#\/?/, '') as Route

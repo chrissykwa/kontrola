@@ -41,6 +41,7 @@ export type VaultStatus = 'none' | 'checking' | 'locked' | 'setup' | 'ready'
 
 type Action =
   | { type: 'addTx'; tx: TxInput }
+  | { type: 'addManyTx'; txs: TxInput[] }
   | { type: 'updateTx'; id: string; tx: TxInput }
   | { type: 'deleteTx'; id: string }
   | { type: 'restoreTx'; tx: Transaction }
@@ -54,6 +55,11 @@ function reducer(state: AppData, action: Action): AppData {
       return {
         ...state,
         transactions: [...state.transactions, { ...action.tx, id: newId(), createdAt: Date.now() }],
+      }
+    case 'addManyTx':
+      return {
+        ...state,
+        transactions: [...state.transactions, ...action.txs.map((tx) => ({ ...tx, id: newId(), createdAt: Date.now() }))],
       }
     case 'updateTx':
       return {
@@ -110,6 +116,7 @@ interface Store {
   /** ¿La cuenta ya tiene datos cifrados (llave en la nube)? */
   vaultExists(): Promise<boolean>
   addTransaction(tx: TxInput): void
+  addTransactions(txs: TxInput[]): void
   updateTransaction(id: string, tx: TxInput): void
   deleteTransaction(id: string): Transaction | undefined
   restoreTransaction(tx: Transaction): void
@@ -494,6 +501,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       regenerateRecoveryCode,
       vaultExists,
       addTransaction: (tx) => dispatch({ type: 'addTx', tx }),
+      addTransactions: (txs) => dispatch({ type: 'addManyTx', txs }),
       updateTransaction: (id, tx) => dispatch({ type: 'updateTx', id, tx }),
       deleteTransaction: (id) => {
         const tx = data.transactions.find((t) => t.id === id)

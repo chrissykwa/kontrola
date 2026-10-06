@@ -1,7 +1,9 @@
-import { Trash2 } from 'lucide-react'
-import { useMemo, useState, type FormEvent } from 'react'
-import { dayLabel, today, yesterday } from '../lib/dates'
+import { Camera, ImagePlus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { dateLabel, dayLabel, today, yesterday } from '../lib/dates'
+import { extractImportText } from '../lib/imports'
 import { formatCLP, formatDigits, formatSigned, parseAmount } from '../lib/money'
+import { suggestReceipt, type ReceiptSuggestion } from '../lib/receipt'
 import { expenseCategories, incomeCategories, noteSuggestions, type Suggestion } from '../lib/stats'
 import type { Transaction } from '../lib/types'
 import { useStore, type TxInput } from '../state/store'
@@ -40,15 +42,25 @@ export function TransactionForm({ editing, onDone }: { editing?: Transaction; on
 function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => void }) {
   const { data, addTransaction, updateTransaction, deleteTransaction, restoreTransaction } = useStore()
   const toast = useToast()
-  const [type, setType] = useState<'expense' | 'income'>(editing?.type === 'income' ? 'income' : 'expense')
+  const [type, setType] = useState<'expense' | 'income' | 'transfer'>(editing?.type === 'income' ? 'income' : editing?.type === 'transfer' ? 'transfer' : 'expense')
   const [amountText, setAmountText] = useState(editing ? formatDigits(editing.amount) : '')
   const [note, setNote] = useState(editing?.note ?? '')
   const [categoryId, setCategoryId] = useState<string | null>(editing?.categoryId ?? null)
   const [date, setDate] = useState(editing?.date ?? today())
+  const [accountId, setAccountId] = useState(editing?.accountId ?? data.settings.accounts.find((a) => a.kind === 'cash' && !a.archived)?.id ?? 'principal')
+  const [installments, setInstallments] = useState(editing?.installments ?? 1)
+  const [toAccountId, setToAccountId] = useState(editing?.toAccountId ?? '')
+  const [incomeSourceId, setIncomeSourceId] = useState(editing?.incomeSourceId ?? '')
   const [noteFocused, setNoteFocused] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const [photoProposal, setPhotoProposal] = useState<{ url: string; fileName: string; result: ReceiptSuggestion } | null>(null)
+  const photoUrl = useRef<string | null>(null)
+  useEffect(() => () => { if (photoUrl.current) URL.revokeObjectURL(photoUrl.current) }, [])
 
   const amount = parseAmount(amountText)
-  const categories = type === 'expense' ? expenseCategories(data) : incomeCategories(data)
+  const creditAccount = data.settings.accounts.find((a) => a.id === accountId && a.kind === 'credit')
+  const categories = type === 'expense' ? expenseCategories(data) : type === 'income' ? incomeCategories(data) : []
   const allSuggestions = useMemo(() => noteSuggestions(data), [data])
 
   const suggestions = useMemo(() => {
@@ -64,17 +76,23 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
     if (!amount) setAmountText(formatDigits(s.amount))
   }
 
-  const switchType = (next: 'expense' | 'income') => {
+  const switchType = (next: 'expense' | 'income' | 'transfer') => {
     setType(next)
     setCategoryId(null)
+    if (next !== 'expense' && data.settings.accounts.find((a) => a.id === accountId)?.kind === 'credit') {
+      setAccountId(data.settings.accounts.find((a) => a.kind === 'cash' && !a.archived)?.id ?? '')
+    }
   }
 
-  const valid = amount > 0 && categoryId !== null
+  const valid = amount > 0 && !!accountId && (type === 'transfer' ? !!toAccountId && toAccountId !== accountId : categoryId !== null)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (!valid) return
-    const tx: TxInput = { type, amount, categoryId, note: note.trim(), date }
+    const tx: TxInput = { type, amount, categoryId: type === 'transfer' ? null : categoryId, note: note.trim(), date, accountId,
+      toAccountId: type === 'transfer' ? toAccountId : undefined,
+      incomeSourceId: type === 'income' ? incomeSourceId || undefined : undefined }
+    if (type === 'expense' && creditAccount) tx.installments = installments
     if (editing) {
       updateTransaction(editing.id, tx)
       toast({ message: 'Movimiento actualizado' })
@@ -87,10 +105,41 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
 
   const showSuggestions = suggestions.length > 0 && (noteFocused || !note)
 
+  const scanPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setPhotoError('Selecciona una imagen.'); return }
+    if (file.size > 15 * 1024 * 1024) { setPhotoError('La foto supera 15 MB. Usa una imagen más pequeña.'); return }
+    setPhotoBusy(true)
+    setPhotoError('')
+    try {
+      const { text } = await extractImportText(file)
+      const result = suggestReceipt(text, data)
+      if (photoUrl.current) URL.revokeObjectURL(photoUrl.current)
+      const url = URL.createObjectURL(file)
+      photoUrl.current = url
+      setPhotoProposal({ url, fileName: file.name, result })
+      if (!result.amount && !result.note) setPhotoError('No pude leer bien el recibo. Puedes completar el gasto a mano.')
+    } catch (err) { setPhotoError(err instanceof Error ? err.message : 'No pude leer la foto') }
+    finally { setPhotoBusy(false) }
+  }
+
+  const applyPhoto = () => {
+    if (!photoProposal) return
+    const { result } = photoProposal
+    if (result.amount) setAmountText(formatDigits(result.amount))
+    if (result.note) setNote(result.note)
+    if (result.date) setDate(result.date)
+    if (result.categoryId) setCategoryId(result.categoryId)
+    setPhotoProposal(null)
+    toast({ message: 'Datos propuestos aplicados. Revisa antes de guardar.' })
+  }
+
   return (
     <form className="form" onSubmit={submit}>
       <div className="segmented" role="radiogroup" aria-label="Tipo de movimiento">
-        {(['expense', 'income'] as const).map((t) => (
+          {(['expense', 'income', 'transfer'] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -99,10 +148,69 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
             className={`segmented__opt ${type === t ? 'is-active' : ''} ${t}`}
             onClick={() => switchType(t)}
           >
-            {t === 'expense' ? 'Gasto' : 'Ingreso'}
+            {t === 'expense' ? 'Gasto' : t === 'income' ? 'Ingreso' : 'Traspaso'}
           </button>
         ))}
       </div>
+
+      {type === 'expense' && <section className="receipt-entry" aria-label="Registrar gasto con foto">
+        <div className="receipt-entry__intro"><strong>¿Tienes un recibo?</strong><span>Lo leemos y preparamos el gasto para que lo confirmes.</span></div>
+        <div className="receipt-entry__actions">
+          <label className="receipt-picker"><Camera size={18} aria-hidden="true" /> Tomar foto<input type="file" accept="image/*" capture="environment" onChange={scanPhoto} disabled={photoBusy} aria-label="Tomar foto del recibo" /></label>
+          <label className="receipt-picker"><ImagePlus size={18} aria-hidden="true" /> Subir imagen<input type="file" accept="image/*" onChange={scanPhoto} disabled={photoBusy} aria-label="Subir imagen del recibo" /></label>
+        </div>
+        {photoBusy && <p className="hint" role="status">Leyendo foto… Puede tardar unos segundos la primera vez.</p>}
+        {photoError && <p className="alert alert--info" role="alert">{photoError}</p>}
+        {photoProposal && <div className="receipt-proposal">
+          <img src={photoProposal.url} alt={`Vista previa de ${photoProposal.fileName}`} />
+          <div><strong>Propuesta para revisar</strong>
+            <span>Importe: {photoProposal.result.amount ? formatCLP(photoProposal.result.amount) : 'por completar'}</span>
+            <span>Comercio: {photoProposal.result.note || 'por completar'}</span>
+            <span>Fecha: {photoProposal.result.date ? dateLabel(photoProposal.result.date) : 'por completar'}</span>
+            <span>Categoría: {data.categories.find((c) => c.id === photoProposal.result.categoryId)?.name ?? 'por completar'}</span>
+            <button type="button" className="btn btn--ghost" onClick={applyPhoto}>Usar estos datos</button>
+          </div>
+        </div>}
+        <p className="hint">La foto se analiza en este dispositivo y no se guarda con el movimiento. El OCR puede descargar su modelo la primera vez.</p>
+      </section>}
+
+      <div className="field">
+        <label htmlFor="tx-account" className="field__label">{type === 'transfer' ? 'Desde cuenta' : 'Cuenta o tarjeta'}</label>
+        <select id="tx-account" className="input" value={accountId} onChange={(e) => {
+          const next = e.target.value
+          setAccountId(next)
+          if (!editing || editing.accountId !== next) setInstallments(data.settings.accounts.find((a) => a.id === next)?.defaultInstallments ?? 1)
+        }}>
+          {data.settings.accounts.filter((a) => !a.archived || a.id === accountId).filter((a) => type === 'expense' || a.kind === 'cash').map((a) =>
+            <option key={a.id} value={a.id}>{a.name}{a.kind === 'credit' ? ' · tarjeta' : ''}</option>)}
+        </select>
+      </div>
+      {type === 'expense' && creditAccount && <div className="field">
+        <label htmlFor="tx-installments" className="field__label">Pagar en cuotas sin interés</label>
+        <input id="tx-installments" className="input" type="number" min="1" max="60" value={installments} onChange={(e) => setInstallments(Number(e.target.value))} required />
+        <p className="hint">{installments > 1 ? `Compra total ${formatCLP(amount)} · ${installments} pagos de aproximadamente ${formatCLP(Math.round(amount / installments))}.` : '1 cuota: el total se factura en el próximo estado.'} La compra completa cuenta como gasto hoy; los pagos futuros aparecen separados en la tarjeta.</p>
+      </div>}
+      {type === 'transfer' && <div className="field">
+        <label htmlFor="tx-destination" className="field__label">Hacia cuenta o tarjeta</label>
+        <select id="tx-destination" className="input" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
+          <option value="">Selecciona destino</option>
+          {data.settings.accounts.filter((a) => !a.archived && a.id !== accountId).map((a) =>
+            <option key={a.id} value={a.id}>{a.name}{a.kind === 'credit' ? ' · pago de tarjeta' : ''}</option>)}
+        </select>
+        <p className="hint">Un pago de tarjeta reduce la deuda y el saldo de la cuenta de origen. No suma un gasto nuevo.</p>
+      </div>}
+      {type === 'income' && data.settings.incomeSources.length > 0 && <div className="field">
+        <label htmlFor="tx-source" className="field__label">Fuente de ingreso <span className="field__optional">(opcional)</span></label>
+        <select id="tx-source" className="input" value={incomeSourceId} onChange={(e) => {
+          const id = e.target.value
+          setIncomeSourceId(id)
+          const source = data.settings.incomeSources.find((s) => s.id === id)
+          if (source) { setAccountId(source.accountId); if (!amount) setAmountText(formatDigits(source.expectedAmount)); if (!note) setNote(source.name) }
+        }}>
+          <option value="">Sin fuente planificada</option>
+          {data.settings.incomeSources.filter((s) => !s.archived).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>}
 
       {/* El número se dibuja aparte y el input real queda invisible encima: así nunca se
           recorta ni se corre, sin importar el largo ni la fuente del teléfono. */}
@@ -168,7 +276,7 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
         )}
       </div>
 
-      <fieldset className="field">
+      {type !== 'transfer' && <fieldset className="field">
         <legend className="field__label">Categoría</legend>
         <div className="cat-grid" role="radiogroup" aria-label="Categoría">
           {categories.map((c) => (
@@ -185,7 +293,7 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
             </button>
           ))}
         </div>
-      </fieldset>
+      </fieldset>}
 
       <fieldset className="field">
         <legend className="field__label">Fecha</legend>
@@ -230,7 +338,7 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
           {editing ? 'Guardar cambios' : amount ? `Registrar ${formatCLP(amount)}` : 'Registrar'}
         </button>
       </div>
-      {!valid && amount > 0 && <p className="hint hint--center">Elige una categoría para registrar</p>}
+      {!valid && amount > 0 && <p className="hint hint--center">{type === 'transfer' ? 'Elige dos cuentas diferentes' : 'Elige una categoría para registrar'}</p>}
     </form>
   )
 }

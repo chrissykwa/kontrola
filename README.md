@@ -6,6 +6,13 @@ Tu control de gastos personal: anotas cada gasto en segundos, se descuenta de tu
 
 - **Registro rápido**: botón `+` → monto → categoría → listo. Si escribes un detalle que ya usaste ("chicle"), la app recuerda su categoría y su último monto.
 - **Saldo disponible**: saldo inicial + ingresos − gastos, siempre a la vista.
+- **Varias cuentas**: saldo y movimientos por cuenta. Las compras con tarjeta generan deuda sin reducir el efectivo; el pago se registra como traspaso desde una cuenta y no duplica el gasto.
+- **Tarjetas de crédito**: día de corte y día de vencimiento configurables. Las compras se agrupan en ciclos y se muestra lo pendiente por pagar en cada fecha.
+- **Fuentes de ingreso**: monto previsto, cuenta destino, fecha esperada y repetición mensual opcional. Son previsiones; el saldo solo cambia al registrar el ingreso.
+- **Importación bancaria**: CSV, PDF con texto e imágenes con OCR local. Cada fila se revisa antes de incorporarse, con detección de posibles duplicados y campos incompletos. En tarjetas se puede comparar el total facturado para un vencimiento con lo ya registrado y lo pendiente de importar. Los extractos varían según el banco y pueden necesitar correcciones manuales.
+- **Foto de recibo al registrar un gasto**: en móvil puedes abrir la cámara o elegir una imagen. El OCR propone importe, comercio, fecha y categoría; revisas y confirmas los datos antes de guardar. La foto no se conserva en el movimiento.
+- **Vista de escritorio**: navegación lateral, panel ancho y resumen distribuido en columnas; el diseño móvil conserva la navegación inferior.
+- **Estimaciones**: reutiliza categorías de comercios conocidos y muestra posibles gastos recurrentes detectados en al menos dos meses de historial. Es una heurística local, no una garantía de gasto futuro.
 - **Cuadrar con el banco**: ingresas el saldo real de tu cuenta y la diferencia queda registrada como ajuste (los gastos que se te olvidó anotar).
 - **Presupuesto mensual**: un total fijo o la suma de presupuestos por categoría, con aviso si te pasas.
 - **Movimientos**: por mes, agrupados por día, con búsqueda y filtros. Tocas uno para editarlo o eliminarlo (con "Deshacer").
@@ -13,6 +20,8 @@ Tu control de gastos personal: anotas cada gasto en segundos, se descuenta de tu
 - **Categorías editables** (nombre, ícono, color; "Otros" siempre al final), modo claro/oscuro, respaldo en `.json` y exportación a Excel (`.csv`).
 - **Cuenta con tu correo** (Supabase): tus datos en todos tus dispositivos.
 - **Instalable en el celular** (PWA): funciona sin internet y sube los cambios al volver la conexión.
+
+Las imágenes se procesan en el dispositivo. El lector (Tesseract) y sus idiomas se sirven desde la propia app (`/ocr`, ver `vite.config.ts`), sin CDN externo, y se descargan solo la primera vez que se usa. No se suben imágenes ni PDFs a Supabase. Solo se guardan los movimientos que el usuario confirma. El OCR no lee PDFs escaneados automáticamente: para esos archivos, usa una imagen o un CSV.
 
 ### ¿Dónde quedan tus datos?
 
