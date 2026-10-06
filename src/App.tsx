@@ -1,4 +1,4 @@
-import { ChartColumn, CreditCard, FileUp, House, List, Plus, Settings as SettingsIcon, Target } from 'lucide-react'
+import { ChartColumn, CreditCard, House, List, Plus, Settings as SettingsIcon, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjustBalance } from './components/AdjustBalance'
 import { CategoryDetail } from './components/CategoryDetail'
@@ -39,10 +39,13 @@ const NAV: { route: Route; label: string; Icon: typeof House }[] = [
   { route: 'analisis', label: 'Análisis', Icon: ChartColumn },
 ]
 
-/** Barra inferior del celular: tres a cada lado del botón +, con nombres cortos para que quepan. */
+/**
+ * Barra inferior del celular: tres a la izquierda del botón + y dos a la derecha (más
+ * anchas, ver .bottom-nav en app.css, para que el + quede al centro). Importar vive en Ajustes.
+ */
 const MOBILE_NAV: { route: Route; label: string; short?: string; Icon: typeof House }[][] = [
   [NAV[0], { ...NAV[1], short: 'Movim.' }, { route: 'cuentas', label: 'Cuentas', Icon: CreditCard }],
-  [{ ...NAV[2], short: 'Presup.' }, NAV[3], { route: 'importar', label: 'Importar', Icon: FileUp }],
+  [NAV[2], NAV[3]],
 ]
 
 /**
@@ -157,7 +160,6 @@ function AppScreens() {
             {[
               ...NAV,
               { route: 'cuentas' as Route, label: 'Cuentas y tarjetas', Icon: CreditCard },
-              { route: 'importar' as Route, label: 'Importar movimientos', Icon: FileUp },
             ].map(({ route: r, label, Icon }) => (
               <button key={r} type="button" className={`desktop-sidebar__link ${route === r ? 'is-active' : ''}`} aria-current={route === r ? 'page' : undefined} onClick={() => navigate(r)}>
                 <Icon size={20} aria-hidden="true" /> {label}

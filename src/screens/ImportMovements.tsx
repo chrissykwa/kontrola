@@ -64,7 +64,7 @@ export function ImportMovements() {
     ui.navigate('movimientos')
   }
   return <div className="screen">
-    <header className="topbar topbar--back"><button type="button" className="icon-btn icon-btn--surface" onClick={() => ui.navigate('movimientos')} aria-label="Volver a movimientos"><ArrowLeft size={20} /></button><h1 className="topbar__title">Importar movimientos</h1></header>
+    <header className="topbar topbar--back"><button type="button" className="icon-btn icon-btn--surface" onClick={() => ui.navigate('ajustes')} aria-label="Volver a ajustes"><ArrowLeft size={20} /></button><h1 className="topbar__title">Importar movimientos</h1></header>
     <section className="settings-group">
       <h2 className="settings-group__title">Estado de cuenta o pantallazos</h2>
       <p className="lead">Sube un CSV, PDF o varias imágenes. Revisa cada fila antes de guardarla.</p>

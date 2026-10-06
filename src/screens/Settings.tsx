@@ -5,6 +5,7 @@ import {
   Cloud,
   Download,
   FileSpreadsheet,
+  FileUp,
   HardDrive,
   LogIn,
   KeyRound,
@@ -149,6 +150,14 @@ export function Settings() {
           </button>
           <button type="button" className="settings-row" onClick={() => ui.navigate('cuentas')}>
             <Landmark size={20} aria-hidden="true" /><span className="settings-row__text"><span>Cuentas y tarjetas</span><span className="muted small">Saldos, corte, pagos e ingresos previstos</span></span><ChevronRight size={18} className="muted" />
+          </button>
+          <button type="button" className="settings-row" onClick={() => ui.navigate('importar')}>
+            <FileUp size={20} aria-hidden="true" />
+            <span className="settings-row__text">
+              <span>Importar movimientos</span>
+              <span className="muted small">Desde el banco: CSV, estado PDF o pantallazos</span>
+            </span>
+            <ChevronRight size={18} aria-hidden="true" className="muted" />
           </button>
         </div>
       </section>
