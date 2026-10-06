@@ -1,4 +1,4 @@
-import { FileUp, Search, SearchX, X } from 'lucide-react'
+import { Search, SearchX, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { TxRow } from '../components/TxRow'
 import { EmptyState, MonthSwitcher } from '../components/ui'
@@ -50,7 +50,6 @@ export function Movements() {
       </header>
 
       <MonthSwitcher value={month} onChange={setMonth} />
-      <button type="button" className="cta" onClick={() => ui.navigate('importar')}><span className="cta__icon"><FileUp size={20} /></span><span className="cta__text"><span className="cta__title">Importar desde el banco</span><span className="muted small">CSV, estado PDF o pantallazos</span></span></button>
 
       <div className="filters">
         <label className="search">
