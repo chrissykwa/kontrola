@@ -532,14 +532,6 @@ fieldset {
   color: var(--danger);
 }
 
-.hero__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
 .hero__month {
   font-size: 14px;
   color: var(--muted);
@@ -550,30 +542,89 @@ fieldset {
   color: var(--text-2);
 }
 
-.hero__adjust {
+/* Cuentas y tarjetas en el inicio: título y dos datos clave en mini-tarjetas */
+.accounts-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+  transition: background var(--dur-fast);
+}
+
+.accounts-card:hover {
+  background: var(--surface-2);
+}
+
+.accounts-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.accounts-card__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+  flex-shrink: 0;
+}
+
+.accounts-card__title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.accounts-card__tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.accounts-card__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.accounts-card__label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accounts-card__value {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.accounts-card__value.is-income {
+  color: var(--income);
+}
+
+.accounts-card__value--soft {
+  font-size: 15px;
   font-weight: 600;
   color: var(--brand-ink);
-  padding: 0 12px;
-  min-height: 34px;
-  border-radius: 999px;
-  background: var(--brand-soft);
-  transition: filter var(--dur-fast);
-  position: relative;
-}
-
-/* Área de toque de 44px sin agrandar el botón */
-.hero__adjust::before {
-  content: '';
-  position: absolute;
-  inset: -5px;
-}
-
-.hero__adjust:hover {
-  filter: brightness(0.97);
 }
 
 /* Presupuesto del mes: franja simple, sin tarjeta */
@@ -1683,8 +1734,7 @@ fieldset {
   bottom: 0;
   z-index: 10;
   display: grid;
-  /* 3 a la izquierda, el +, y 2 más anchos a la derecha: el + queda justo al centro. */
-  grid-template-columns: 1fr 1fr 1fr 1fr 1.5fr 1.5fr;
+  grid-template-columns: repeat(5, 1fr);
   align-items: center;
   max-width: 560px;
   margin: 0 auto;
@@ -1715,7 +1765,7 @@ fieldset {
   gap: 2px;
   height: 100%;
   min-width: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--muted);
   transition: color var(--dur-fast);
@@ -1730,7 +1780,7 @@ fieldset {
 
 .bottom-nav__item svg {
   box-sizing: content-box;
-  padding: 4px 10px;
+  padding: 4px 16px;
   border-radius: 999px;
   transition: background var(--dur-fast);
 }
@@ -2512,7 +2562,6 @@ button.settings-row:hover {
   .screen--home .hero__month span:not(.is-income) { color: rgba(255,255,255,.86); }
   .screen--home .hero__month .is-income { color: #c9ffe5; }
   .screen--home .hero__value { font-size: clamp(48px, 5vw, 72px); }
-  .screen--home .hero__adjust { background: rgba(255,255,255,.17); color: #fff; }
   .home__accounts { grid-column: 1; }
   .home__budget { grid-column: 2; }
   .home__categories { grid-column: 1; }
@@ -2520,9 +2569,12 @@ button.settings-row:hover {
   .home__recent--wide { grid-column: 1 / -1; }
   .screen--home .section { margin-top: 0; background: var(--bg); padding: 22px; border-radius: 20px; }
   .screen--home .cta,
-  .screen--home .budget-strip { min-height: 94px; background: var(--bg); }
+  .screen--home .budget-strip,
+  .screen--home .accounts-card { min-height: 94px; background: var(--bg); }
+  .screen--home .accounts-card__tile { background: var(--surface); }
   .screen--home .cta:hover,
-  .screen--home .budget-strip:hover { background: var(--surface-2); }
+  .screen--home .budget-strip:hover,
+  .screen--home .accounts-card:hover { background: var(--surface-2); }
 
   .screen--accounts > .settings-group { min-width: 0; }
   .screen--accounts .card--list,

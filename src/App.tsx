@@ -39,14 +39,6 @@ const NAV: { route: Route; label: string; Icon: typeof House }[] = [
   { route: 'analisis', label: 'Análisis', Icon: ChartColumn },
 ]
 
-/**
- * Barra inferior del celular: tres a la izquierda del botón + y dos a la derecha (más
- * anchas, ver .bottom-nav en app.css, para que el + quede al centro). Importar vive en Ajustes.
- */
-const MOBILE_NAV: { route: Route; label: string; short?: string; Icon: typeof House }[][] = [
-  [NAV[0], { ...NAV[1], short: 'Movim.' }, { route: 'cuentas', label: 'Cuentas', Icon: CreditCard }],
-  [NAV[2], NAV[3]],
-]
 
 /**
  * Tema propio de la app: claro por defecto, oscuro solo si lo eliges en Ajustes.
@@ -175,14 +167,14 @@ function AppScreens() {
         </main>
 
         <nav className="bottom-nav" aria-label="Principal">
-          {MOBILE_NAV[0].map(({ route: r, label, short, Icon }) => (
-            <NavItem key={r} active={route === r} label={label} short={short} Icon={Icon} onClick={() => navigate(r)} />
+          {NAV.slice(0, 2).map(({ route: r, label, Icon }) => (
+            <NavItem key={r} active={route === r} label={label} Icon={Icon} onClick={() => navigate(r)} />
           ))}
           <button type="button" className="fab" onClick={actions.openNewTx} aria-label="Registrar gasto o ingreso" title="Registrar (N)">
             <Plus size={28} strokeWidth={2.5} aria-hidden="true" />
           </button>
-          {MOBILE_NAV[1].map(({ route: r, label, short, Icon }) => (
-            <NavItem key={r} active={route === r} label={label} short={short} Icon={Icon} onClick={() => navigate(r)} />
+          {NAV.slice(2).map(({ route: r, label, Icon }) => (
+            <NavItem key={r} active={route === r} label={label} Icon={Icon} onClick={() => navigate(r)} />
           ))}
         </nav>
 
@@ -206,29 +198,11 @@ function AppScreens() {
   )
 }
 
-function NavItem({
-  active,
-  label,
-  short,
-  Icon,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  short?: string
-  Icon: typeof House
-  onClick: () => void
-}) {
+function NavItem({ active, label, Icon, onClick }: { active: boolean; label: string; Icon: typeof House; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      className={`bottom-nav__item ${active ? 'is-active' : ''}`}
-      aria-current={active ? 'page' : undefined}
-      aria-label={short ? label : undefined}
-      onClick={onClick}
-    >
+    <button type="button" className={`bottom-nav__item ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={onClick}>
       <Icon size={22} aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
-      <span>{short ?? label}</span>
+      <span>{label}</span>
     </button>
   )
 }
