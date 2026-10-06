@@ -1,4 +1,4 @@
-import { Scale } from 'lucide-react'
+import { ArrowLeftRight, Scale } from 'lucide-react'
 import { shortDayLabel } from '../lib/dates'
 import { formatCLP, formatSigned } from '../lib/money'
 import type { Category, Transaction } from '../lib/types'
@@ -19,19 +19,23 @@ export function TxRow({
   onSelect: (tx: Transaction) => void
 }) {
   const isAdjustment = tx.type === 'adjustment'
-  const title = tx.note || (isAdjustment ? 'Ajuste de saldo' : category?.name ?? 'Sin categoría')
-  const subtitle = [isAdjustment ? 'Ajuste' : tx.note && showCategory ? category?.name : null, showDate ? shortDayLabel(tx.date) : null]
+  const isTransfer = tx.type === 'transfer'
+  const title = tx.note || (isAdjustment ? 'Ajuste de saldo' : isTransfer ? 'Traspaso entre cuentas' : category?.name ?? 'Sin categoría')
+  const subtitle = [
+    isAdjustment ? 'Ajuste' : isTransfer ? 'Traspaso / pago de tarjeta' : tx.note && showCategory ? category?.name : null,
+    showDate ? shortDayLabel(tx.date) : null,
+  ]
     .filter(Boolean)
     .join(' · ')
   const amount =
-    tx.type === 'expense' ? `−${formatCLP(tx.amount)}` : tx.type === 'income' ? `+${formatCLP(tx.amount)}` : formatSigned(tx.amount)
+    tx.type === 'expense' ? `−${formatCLP(tx.amount)}` : tx.type === 'income' ? `+${formatCLP(tx.amount)}` : isTransfer ? formatCLP(tx.amount) : formatSigned(tx.amount)
 
   return (
     <li>
       <button type="button" className="tx-row" onClick={() => onSelect(tx)}>
-        {isAdjustment ? (
+        {isAdjustment || isTransfer ? (
           <span className="cat-icon cat-icon--md cat-icon--neutral" aria-hidden="true">
-            <Scale strokeWidth={2} />
+            {isTransfer ? <ArrowLeftRight strokeWidth={2} /> : <Scale strokeWidth={2} />}
           </span>
         ) : (
           <CategoryIcon category={category} />

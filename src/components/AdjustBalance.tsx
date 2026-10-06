@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { today } from '../lib/dates'
 import { formatCLP, formatSigned } from '../lib/money'
-import { currentBalance } from '../lib/stats'
+import { accountBalance } from '../lib/stats'
 import { useStore } from '../state/store'
 import { AmountInput } from './AmountInput'
 import { useToast } from './Toast'
@@ -13,7 +13,8 @@ import { useToast } from './Toast'
 export function AdjustBalance({ onDone }: { onDone: () => void }) {
   const { data, addTransaction } = useStore()
   const toast = useToast()
-  const balance = currentBalance(data)
+  const [accountId, setAccountId] = useState(data.settings.accounts.find((a) => a.kind === 'cash' && !a.archived)?.id ?? 'principal')
+  const balance = accountBalance(data, accountId)
   const [real, setReal] = useState<number | null>(null)
   const [negative, setNegative] = useState(false)
 
@@ -30,6 +31,7 @@ export function AdjustBalance({ onDone }: { onDone: () => void }) {
         categoryId: null,
         note: diff < 0 ? 'Gastos sin registrar' : 'Ajuste con banco',
         date: today(),
+        accountId,
       })
       toast({ message: `Saldo cuadrado en ${formatCLP(target)}` })
     } else {
@@ -44,6 +46,10 @@ export function AdjustBalance({ onDone }: { onDone: () => void }) {
         Kontrola calcula <strong>{formatCLP(balance)}</strong>. ¿Cuánto dice tu banco ahora?
       </p>
       <div className="field">
+        <label htmlFor="adjust-account" className="field__label">Cuenta que vas a cuadrar</label>
+        <select id="adjust-account" className="input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          {data.settings.accounts.filter((a) => a.kind === 'cash' && !a.archived).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
         <label htmlFor="real-balance" className="field__label">
           Saldo real en el banco
         </label>

@@ -12,6 +12,7 @@ import {
   txToRow,
   type TransactionRow,
 } from './supabaseCloud'
+import { normalize } from './storage'
 import type { AppData, Transaction } from './types'
 
 const tx = (id: string, amount = 1000): Transaction => ({
@@ -97,6 +98,29 @@ describe('filas cifradas de Supabase', () => {
     const sRow = await settingsToRow(key, 'u1', s)
     expect(sRow.opening_balance).toBeNull()
     expect(await rowToSettings(key, sRow)).toEqual(s)
+  })
+
+  it('cuentas, tarjetas, cuotas y traspasos viajan cifrados y vuelven completos', async () => {
+    const { key } = await createVault('clave123')
+    const card = { ...tx('t-card', 89_990), note: 'Zapatillas', accountId: 'visa', installments: 3 }
+    const transfer: Transaction = { ...tx('pago1', 50_000), type: 'transfer', categoryId: null, accountId: 'principal', toAccountId: 'visa' }
+    for (const t of [card, transfer]) {
+      const row = await txToRow(key, 'u1', t)
+      expect(JSON.stringify(row)).not.toMatch(/visa|Zapatillas|89990|50000/)
+      expect(await rowToTx(key, row)).toEqual(t)
+    }
+    const d = base()
+    const s = {
+      ...d.settings,
+      accounts: [...d.settings.accounts, { id: 'visa', name: 'Visa Banco', kind: 'credit' as const, openingBalance: 0, closingDay: 25, dueDay: 10 }],
+      incomeSources: [{ id: 's', name: 'Sueldo', accountId: 'principal', expectedAmount: 1_150_000, recurring: true, nextDate: '2026-11-01', intervalMonths: 1 }],
+    }
+    const sRow = await settingsToRow(key, 'u1', s)
+    expect(JSON.stringify(sRow)).not.toMatch(/Visa Banco|Sueldo/)
+    expect(normalize({ ...d, settings: await rowToSettings(key, sRow) }).settings).toMatchObject({
+      accounts: s.accounts.map((a) => expect.objectContaining({ id: a.id, name: a.name, kind: a.kind })),
+      incomeSources: [expect.objectContaining({ name: 'Sueldo', expectedAmount: 1_150_000 })],
+    })
   })
 
   it('una fila cifrada de otro usuario no se puede leer como propia', async () => {

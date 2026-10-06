@@ -71,3 +71,9 @@ export function dayLabel(date: string): string {
 export function shortDayLabel(date: string): string {
   return shortDayFmt.format(parseISODate(date)).replace('.', '')
 }
+
+/** "10 nov", o "10 ene 2027" si no es de este año (vencimientos, próximos ingresos). */
+export function dateLabel(date: string, todayISO = today()): string {
+  const year = date.slice(0, 4)
+  return year === todayISO.slice(0, 4) ? shortDayLabel(date) : `${shortDayLabel(date)} ${year}`
+}

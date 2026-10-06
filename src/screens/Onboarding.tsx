@@ -15,7 +15,9 @@ export function Onboarding() {
 
   const start = (e: FormEvent) => {
     e.preventDefault()
-    updateSettings({ openingBalance: balance ?? 0, monthlyBudget: budget, onboarded: true })
+    updateSettings({ openingBalance: balance ?? 0,
+      accounts: [{ id: 'principal', name: 'Cuenta principal', kind: 'cash', openingBalance: balance ?? 0 }],
+      monthlyBudget: budget, onboarded: true })
   }
 
   return (

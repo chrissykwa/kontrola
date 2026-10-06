@@ -1,8 +1,9 @@
-import { ChartColumn, House, List, Plus, Target } from 'lucide-react'
+import { ChartColumn, CreditCard, FileUp, House, List, Plus, Settings as SettingsIcon, Target } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjustBalance } from './components/AdjustBalance'
 import { CategoryDetail } from './components/CategoryDetail'
 import { LaunchSplash } from './components/LaunchSplash'
+import { Logo } from './components/Logo'
 import { Sheet } from './components/Sheet'
 import { TransactionForm } from './components/TransactionForm'
 import type { MonthKey } from './lib/dates'
@@ -16,6 +17,8 @@ import { RecoveryCodeScreen, SetupVaultScreen, UnlockScreen } from './screens/Va
 import { Onboarding } from './screens/Onboarding'
 import { Settings } from './screens/Settings'
 import { Stats } from './screens/Stats'
+import { Accounts } from './screens/Accounts'
+import { ImportMovements } from './screens/ImportMovements'
 import { useCategoryMap, useStore } from './state/store'
 import { UIContext, useHashRoute, type Route, type UIActions } from './state/ui'
 
@@ -34,6 +37,12 @@ const NAV: { route: Route; label: string; Icon: typeof House }[] = [
   { route: 'movimientos', label: 'Movimientos', Icon: List },
   { route: 'presupuesto', label: 'Presupuesto', Icon: Target },
   { route: 'analisis', label: 'Análisis', Icon: ChartColumn },
+]
+
+/** Barra inferior del celular: tres a cada lado del botón +, con nombres cortos para que quepan. */
+const MOBILE_NAV: { route: Route; label: string; short?: string; Icon: typeof House }[][] = [
+  [NAV[0], { ...NAV[1], short: 'Movim.' }, { route: 'cuentas', label: 'Cuentas', Icon: CreditCard }],
+  [{ ...NAV[2], short: 'Presup.' }, NAV[3], { route: 'importar', label: 'Importar', Icon: FileUp }],
 ]
 
 /**
@@ -119,6 +128,8 @@ function AppScreens() {
     presupuesto: <Budget />,
     analisis: <Stats />,
     ajustes: <Settings />,
+    cuentas: <Accounts />,
+    importar: <ImportMovements />,
   }[route]
 
   const sheetTitle =
@@ -138,19 +149,38 @@ function AppScreens() {
   return (
     <UIContext.Provider value={actions}>
       <div className="app">
+        <aside className="desktop-sidebar" aria-label="Navegación de escritorio">
+          <div className="desktop-sidebar__brand"><Logo size={38} /><span>Kontrola</span></div>
+          <p className="desktop-sidebar__caption">Tus finanzas, claras.</p>
+          <button type="button" className="desktop-sidebar__new" onClick={actions.openNewTx}><Plus size={20} /> Nuevo movimiento</button>
+          <nav className="desktop-sidebar__nav" aria-label="Principal">
+            {[
+              ...NAV,
+              { route: 'cuentas' as Route, label: 'Cuentas y tarjetas', Icon: CreditCard },
+              { route: 'importar' as Route, label: 'Importar movimientos', Icon: FileUp },
+            ].map(({ route: r, label, Icon }) => (
+              <button key={r} type="button" className={`desktop-sidebar__link ${route === r ? 'is-active' : ''}`} aria-current={route === r ? 'page' : undefined} onClick={() => navigate(r)}>
+                <Icon size={20} aria-hidden="true" /> {label}
+              </button>
+            ))}
+          </nav>
+          <button type="button" className={`desktop-sidebar__link desktop-sidebar__settings ${route === 'ajustes' ? 'is-active' : ''}`} aria-current={route === 'ajustes' ? 'page' : undefined} onClick={() => navigate('ajustes')}>
+            <SettingsIcon size={20} aria-hidden="true" /> Ajustes
+          </button>
+        </aside>
         <main className="app__main" id="main">
           {screen}
         </main>
 
         <nav className="bottom-nav" aria-label="Principal">
-          {NAV.slice(0, 2).map(({ route: r, label, Icon }) => (
-            <NavItem key={r} active={route === r} label={label} Icon={Icon} onClick={() => navigate(r)} />
+          {MOBILE_NAV[0].map(({ route: r, label, short, Icon }) => (
+            <NavItem key={r} active={route === r} label={label} short={short} Icon={Icon} onClick={() => navigate(r)} />
           ))}
           <button type="button" className="fab" onClick={actions.openNewTx} aria-label="Registrar gasto o ingreso" title="Registrar (N)">
             <Plus size={28} strokeWidth={2.5} aria-hidden="true" />
           </button>
-          {NAV.slice(2).map(({ route: r, label, Icon }) => (
-            <NavItem key={r} active={route === r} label={label} Icon={Icon} onClick={() => navigate(r)} />
+          {MOBILE_NAV[1].map(({ route: r, label, short, Icon }) => (
+            <NavItem key={r} active={route === r} label={label} short={short} Icon={Icon} onClick={() => navigate(r)} />
           ))}
         </nav>
 
@@ -174,11 +204,29 @@ function AppScreens() {
   )
 }
 
-function NavItem({ active, label, Icon, onClick }: { active: boolean; label: string; Icon: typeof House; onClick: () => void }) {
+function NavItem({
+  active,
+  label,
+  short,
+  Icon,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  short?: string
+  Icon: typeof House
+  onClick: () => void
+}) {
   return (
-    <button type="button" className={`bottom-nav__item ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={onClick}>
+    <button
+      type="button"
+      className={`bottom-nav__item ${active ? 'is-active' : ''}`}
+      aria-current={active ? 'page' : undefined}
+      aria-label={short ? label : undefined}
+      onClick={onClick}
+    >
       <Icon size={22} aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
-      <span>{label}</span>
+      <span>{short ?? label}</span>
     </button>
   )
 }

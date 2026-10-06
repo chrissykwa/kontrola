@@ -1,12 +1,12 @@
-import { ChevronRight, CircleAlert, Plus, Scale, Settings as SettingsIcon, Target } from 'lucide-react'
+import { ChevronRight, CircleAlert, CreditCard, Plus, Scale, Settings as SettingsIcon, Target } from 'lucide-react'
 import { useMemo } from 'react'
 import { CategoryIcon } from '../components/Icon'
 import { Logo } from '../components/Logo'
 import { TxRow } from '../components/TxRow'
 import { EmptyState, Meter } from '../components/ui'
-import { currentMonth, monthLabel, today } from '../lib/dates'
+import { currentMonth, dateLabel, monthLabel, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
-import { budgetStatus, currentBalance, monthPace, monthSummary } from '../lib/stats'
+import { accountBalance, budgetStatus, creditBills, currentBalance, monthPace, monthSummary } from '../lib/stats'
 import { useCategoryMap, useStore } from '../state/store'
 import { useUI } from '../state/ui'
 
@@ -17,6 +17,9 @@ export function Home() {
   const month = currentMonth()
 
   const balance = currentBalance(data)
+  const cardDebt = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived).reduce((sum, a) => sum + Math.max(0, -accountBalance(data, a.id)), 0)
+  const nextCardBill = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived)
+    .flatMap((a) => creditBills(data, a.id)).filter((b) => b.amount > 0).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
   const summary = useMemo(() => monthSummary(data, month), [data, month])
   const pace = monthPace(data, month, today())
   const monthName = monthLabel(month).split(' ')[0].toLowerCase()
@@ -32,12 +35,13 @@ export function Home() {
   const topCategories = [...summary.byCategory.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
 
   return (
-    <div className="screen">
+    <div className="screen screen--home">
       <header className="topbar">
         <div className="brand">
           <Logo size={32} />
           <span className="brand__name">Kontrola</span>
         </div>
+        <h1 className="home-desktop-title">Resumen</h1>
         <button type="button" className="icon-btn" onClick={() => ui.navigate('ajustes')} aria-label="Ajustes">
           <SettingsIcon size={22} />
         </button>
@@ -60,8 +64,15 @@ export function Home() {
         </div>
       </section>
 
+      <button type="button" className="cta home__accounts" onClick={() => ui.navigate('cuentas')}>
+        <span className="cta__icon" aria-hidden="true"><CreditCard size={20} /></span>
+        <span className="cta__text"><span className="cta__title">Cuentas, tarjetas y próximos pagos</span>
+          <span className="muted small">{cardDebt > 0 ? `Deuda en tarjetas ${formatCLP(cardDebt)}${nextCardBill ? ` · próximo pago ${dateLabel(nextCardBill.dueDate)}` : ''}` : 'Revisa saldos, deuda e ingresos esperados'}</span></span>
+        <ChevronRight size={18} className="muted" />
+      </button>
+
       {pace.budget > 0 ? (
-        <button type="button" className="budget-strip" onClick={() => ui.navigate('presupuesto')}>
+        <button type="button" className="budget-strip home__budget" onClick={() => ui.navigate('presupuesto')}>
           <span className="budget-strip__top">
             <span className="muted">Presupuesto de {monthName}</span>
             <span>
@@ -78,7 +89,7 @@ export function Home() {
           )}
         </button>
       ) : (
-        <button type="button" className="cta" onClick={() => ui.navigate('presupuesto')}>
+        <button type="button" className="cta home__budget" onClick={() => ui.navigate('presupuesto')}>
           <span className="cta__icon" aria-hidden="true">
             <Target size={20} />
           </span>
@@ -91,7 +102,7 @@ export function Home() {
       )}
 
       {topCategories.length > 0 && (
-        <section className="section" aria-labelledby="cats-title">
+        <section className="section home__categories" aria-labelledby="cats-title">
           <div className="section__head">
             <h2 id="cats-title" className="section__title">
               En qué se va la plata
@@ -126,7 +137,7 @@ export function Home() {
         </section>
       )}
 
-      <section className="section" aria-labelledby="recent-title">
+      <section className={`section home__recent ${topCategories.length ? '' : 'home__recent--wide'}`} aria-labelledby="recent-title">
         <div className="section__head">
           <h2 id="recent-title" className="section__title">
             Últimos movimientos

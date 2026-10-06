@@ -103,7 +103,8 @@ export function Settings() {
 
   const saveOpening = (e: FormEvent) => {
     e.preventDefault()
-    updateSettings({ openingBalance: openingDraft ?? 0 })
+    updateSettings({ openingBalance: openingDraft ?? 0,
+      accounts: data.settings.accounts.map((a) => a.id === 'principal' ? { ...a, openingBalance: openingDraft ?? 0 } : a) })
     toast({ message: 'Saldo inicial actualizado' })
     setSheet(null)
   }
@@ -126,7 +127,7 @@ export function Settings() {
             type="button"
             className="settings-row"
             onClick={() => {
-              setOpeningDraft(data.settings.openingBalance || null)
+              setOpeningDraft(data.settings.accounts.find((a) => a.id === 'principal')?.openingBalance ?? null)
               setSheet({ kind: 'opening' })
             }}
           >
@@ -135,7 +136,7 @@ export function Settings() {
               <span>Saldo inicial</span>
               <span className="muted small">Con cuánto partiste a usar Kontrola</span>
             </span>
-            <span className="settings-row__value">{formatCLP(data.settings.openingBalance)}</span>
+            <span className="settings-row__value">{formatCLP(data.settings.accounts.find((a) => a.id === 'principal')?.openingBalance ?? 0)}</span>
             <ChevronRight size={18} aria-hidden="true" className="muted" />
           </button>
           <button type="button" className="settings-row" onClick={ui.openAdjust}>
@@ -145,6 +146,9 @@ export function Settings() {
               <span className="muted small">Corrige la diferencia con tu saldo real</span>
             </span>
             <ChevronRight size={18} aria-hidden="true" className="muted" />
+          </button>
+          <button type="button" className="settings-row" onClick={() => ui.navigate('cuentas')}>
+            <Landmark size={20} aria-hidden="true" /><span className="settings-row__text"><span>Cuentas y tarjetas</span><span className="muted small">Saldos, corte, pagos e ingresos previstos</span></span><ChevronRight size={18} className="muted" />
           </button>
         </div>
       </section>
