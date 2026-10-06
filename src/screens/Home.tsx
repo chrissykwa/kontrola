@@ -1,4 +1,4 @@
-import { ChevronRight, CircleAlert, CreditCard, Plus, Scale, Settings as SettingsIcon, Target } from 'lucide-react'
+import { ChevronRight, CircleAlert, CreditCard, Plus, Settings as SettingsIcon, Target } from 'lucide-react'
 import { useMemo } from 'react'
 import { CategoryIcon } from '../components/Icon'
 import { Logo } from '../components/Logo'
@@ -6,6 +6,7 @@ import { TxRow } from '../components/TxRow'
 import { EmptyState, Meter } from '../components/ui'
 import { currentMonth, dateLabel, monthLabel, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
+import { incomeOccurrences } from '../lib/planning'
 import { accountBalance, budgetStatus, creditBills, currentBalance, monthPace, monthSummary } from '../lib/stats'
 import { useCategoryMap, useStore } from '../state/store'
 import { useUI } from '../state/ui'
@@ -17,9 +18,18 @@ export function Home() {
   const month = currentMonth()
 
   const balance = currentBalance(data)
-  const cardDebt = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived).reduce((sum, a) => sum + Math.max(0, -accountBalance(data, a.id)), 0)
-  const nextCardBill = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived)
-    .flatMap((a) => creditBills(data, a.id)).filter((b) => b.amount > 0).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
+  const cards = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived)
+  const hasCards = cards.length > 0
+  const cardDebt = cards.reduce((sum, a) => sum + Math.max(0, -accountBalance(data, a.id)), 0)
+  const nextCardBill = cards
+    .flatMap((a) => creditBills(data, a.id))
+    .filter((b) => b.amount > 0)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0]
+  // Si no hay pagos de tarjeta pendientes, se muestra el próximo ingreso esperado.
+  const nextIncome = data.settings.incomeSources
+    .map((s) => ({ name: s.name, amount: s.expectedAmount, date: incomeOccurrences(s, today(), 1)[0] }))
+    .filter((s) => s.date)
+    .sort((a, b) => a.date.localeCompare(b.date))[0]
   const summary = useMemo(() => monthSummary(data, month), [data, month])
   const pace = monthPace(data, month, today())
   const monthName = monthLabel(month).split(' ')[0].toLowerCase()
@@ -52,23 +62,50 @@ export function Home() {
           Saldo disponible
         </p>
         <p className={`hero__value ${balance < 0 ? 'is-negative' : ''}`}>{formatCLP(balance)}</p>
-        <div className="hero__foot">
-          <p className="hero__month">
-            En {monthName}: <span className="is-income">+{formatCLP(summary.income)}</span> ·{' '}
-            <span>−{formatCLP(summary.spent)}</span>
-          </p>
-          <button type="button" className="hero__adjust" onClick={ui.openAdjust}>
-            <Scale size={14} aria-hidden="true" />
-            Cuadrar
-          </button>
-        </div>
+        <p className="hero__month">
+          En {monthName}: <span className="is-income">+{formatCLP(summary.income)}</span> ·{' '}
+          <span>−{formatCLP(summary.spent)}</span>
+        </p>
       </section>
 
-      <button type="button" className="cta home__accounts" onClick={() => ui.navigate('cuentas')}>
-        <span className="cta__icon" aria-hidden="true"><CreditCard size={20} /></span>
-        <span className="cta__text"><span className="cta__title">Cuentas, tarjetas y próximos pagos</span>
-          <span className="muted small">{cardDebt > 0 ? `Deuda en tarjetas ${formatCLP(cardDebt)}${nextCardBill ? ` · próximo pago ${dateLabel(nextCardBill.dueDate)}` : ''}` : 'Revisa saldos, deuda e ingresos esperados'}</span></span>
-        <ChevronRight size={18} className="muted" />
+      <button type="button" className="accounts-card home__accounts" onClick={() => ui.navigate('cuentas')}>
+        <span className="accounts-card__head">
+          <span className="accounts-card__icon" aria-hidden="true">
+            <CreditCard size={18} />
+          </span>
+          <span className="accounts-card__title">Cuentas y tarjetas</span>
+          <ChevronRight size={18} className="muted" aria-hidden="true" />
+        </span>
+        <span className="accounts-card__tiles">
+          <span className="accounts-card__tile">
+            <span className="accounts-card__label">{hasCards ? 'Deuda en tarjetas' : 'Tarjetas'}</span>
+            {hasCards ? (
+              <span className="accounts-card__value">{formatCLP(cardDebt)}</span>
+            ) : (
+              <span className="accounts-card__value accounts-card__value--soft">
+                <Plus size={15} strokeWidth={2.5} aria-hidden="true" /> Agregar
+              </span>
+            )}
+          </span>
+          <span className="accounts-card__tile">
+            {nextCardBill ? (
+              <>
+                <span className="accounts-card__label">Próximo pago · {dateLabel(nextCardBill.dueDate)}</span>
+                <span className="accounts-card__value">{formatCLP(nextCardBill.amount)}</span>
+              </>
+            ) : nextIncome ? (
+              <>
+                <span className="accounts-card__label">{nextIncome.name} · {dateLabel(nextIncome.date)}</span>
+                <span className="accounts-card__value is-income">+{formatCLP(nextIncome.amount)}</span>
+              </>
+            ) : (
+              <>
+                <span className="accounts-card__label">Próximos pagos</span>
+                <span className="accounts-card__value accounts-card__value--soft">Al día</span>
+              </>
+            )}
+          </span>
+        </span>
       </button>
 
       {pace.budget > 0 ? (
