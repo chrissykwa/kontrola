@@ -27,7 +27,7 @@ export function CategoryDetail({
   const breakdown = useMemo(() => categoryBreakdown(data, month, categoryId), [data, month, categoryId])
   const monthSpent = useMemo(() => monthSummary(data, month).spent, [data, month])
 
-  const { transactions, total, byDetail } = breakdown
+  const { entries, total, byDetail } = breakdown
   const share = monthSpent > 0 ? Math.round((total / monthSpent) * 100) : 0
   const budget = category?.budget ?? 0
   // Solo vale la pena si hay algo que se repite; si cada gasto es distinto, la lista ya lo dice todo.
@@ -41,7 +41,7 @@ export function CategoryDetail({
         <div>
           <p className="cat-detail__total">{formatCLP(total)}</p>
           <p className="muted small">
-            {transactions.length} {transactions.length === 1 ? 'gasto' : 'gastos'} en {monthLabel(month).toLowerCase()}
+            {entries.length} {entries.length === 1 ? 'gasto' : 'gastos'} en {monthLabel(month).toLowerCase()}
             {share > 0 && ` · ${share}% de lo que gastaste`}
           </p>
         </div>
@@ -88,10 +88,18 @@ export function CategoryDetail({
         <h3 id="cat-detail-list" className="cat-detail__heading">
           Todos los gastos
         </h3>
-        {transactions.length ? (
+        {entries.length ? (
           <ul className="tx-list tx-list--plain">
-            {transactions.map((t) => (
-              <TxRow key={t.id} tx={t} category={category} showDate showCategory={false} onSelect={onSelectTx} />
+            {entries.map((e) => (
+              <TxRow
+                key={`${e.tx.id}-${e.date}`}
+                tx={e.tx}
+                entry={e}
+                category={category}
+                showDate
+                showCategory={false}
+                onSelect={onSelectTx}
+              />
             ))}
           </ul>
         ) : (

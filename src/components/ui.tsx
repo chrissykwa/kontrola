@@ -3,8 +3,10 @@ import { currentMonth, monthLabel, shiftMonth, type MonthKey } from '../lib/date
 import type { ReactNode } from 'react'
 import { formatCLP } from '../lib/money'
 
-export function MonthSwitcher({ value, onChange }: { value: MonthKey; onChange: (m: MonthKey) => void }) {
+/** `max`: último mes al que se puede avanzar (por defecto el actual; más allá si hay cuotas de tarjeta por pagar). */
+export function MonthSwitcher({ value, onChange, max }: { value: MonthKey; onChange: (m: MonthKey) => void; max?: MonthKey }) {
   const isCurrent = value === currentMonth()
+  const last = max && max > currentMonth() ? max : currentMonth()
   return (
     <div className="month-switcher">
       <button type="button" className="icon-btn" onClick={() => onChange(shiftMonth(value, -1))} aria-label="Mes anterior">
@@ -24,7 +26,7 @@ export function MonthSwitcher({ value, onChange }: { value: MonthKey; onChange: 
         className="icon-btn"
         onClick={() => onChange(shiftMonth(value, 1))}
         aria-label="Mes siguiente"
-        disabled={isCurrent}
+        disabled={value >= last}
       >
         <ChevronRight size={20} />
       </button>

@@ -5,9 +5,9 @@ import { CategoryIcon } from '../components/Icon'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
 import { Meter, MonthSwitcher, StatusBadge } from '../components/ui'
-import { currentMonth, monthLabel, today } from '../lib/dates'
+import { currentMonth, monthLabel, shiftMonth, today } from '../lib/dates'
 import { formatCLP, formatDigits } from '../lib/money'
-import { budgetStatus, categoryBudgetSum, expenseCategories, monthPace, monthSummary } from '../lib/stats'
+import { budgetStatus, categoryBudgetSum, expenseCategories, lastSpendMonth, monthPace, monthSummary } from '../lib/stats'
 import type { Category } from '../lib/types'
 import { useStore } from '../state/store'
 import { useUI } from '../state/ui'
@@ -46,6 +46,11 @@ export function Budget() {
   }
 
   const isCurrent = month === currentMonth()
+  const isFuture = month > currentMonth()
+  const maxMonth = lastSpendMonth(data, currentMonth())
+  // Lo que ya está comprometido con tarjeta para el mes siguiente (se ve desde el mes actual).
+  const nextMonth = shiftMonth(month, 1)
+  const nextCommitted = useMemo(() => (isCurrent ? monthSummary(data, nextMonth).spent : 0), [data, isCurrent, nextMonth])
 
   return (
     <div className="screen">
@@ -53,7 +58,7 @@ export function Budget() {
         <h1 className="topbar__title">Presupuesto</h1>
       </header>
 
-      <MonthSwitcher value={month} onChange={setMonth} />
+      <MonthSwitcher value={month} onChange={setMonth} max={maxMonth} />
 
       <section className="card">
         <div className="card__head">
@@ -71,9 +76,17 @@ export function Budget() {
               {pace.remaining >= 0
                 ? isCurrent
                   ? `Te quedan ${formatCLP(pace.remaining)} · ${formatCLP(pace.perDay)} por día`
-                  : `Sobraron ${formatCLP(pace.remaining)}`
+                  : isFuture
+                    ? `Ya comprometido con tarjeta · te quedan ${formatCLP(pace.remaining)}`
+                    : `Sobraron ${formatCLP(pace.remaining)}`
                 : `Te pasaste por ${formatCLP(-pace.remaining)}`}
             </p>
+            {nextCommitted > 0 && (
+              <button type="button" className="link-btn budget-next" onClick={() => setMonth(nextMonth)}>
+                Con tarjeta ya tienes {formatCLP(nextCommitted)} para {monthLabel(nextMonth).split(' ')[0].toLowerCase()}
+                <ChevronRight size={14} aria-hidden="true" />
+              </button>
+            )}
           </>
         ) : (
           <p className="muted">Aún no defines cuánto quieres gastar al mes.</p>

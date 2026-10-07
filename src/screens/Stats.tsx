@@ -5,7 +5,7 @@ import { CategoryIcon } from '../components/Icon'
 import { EmptyState, MonthSwitcher } from '../components/ui'
 import { currentMonth, daysInMonth, dayLabel, monthLabel, monthShortLabel, shiftMonth, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
-import { monthlyTotals, monthSummary, totalBudget, transactionsOfMonth } from '../lib/stats'
+import { lastSpendMonth, monthlyTotals, monthSummary, spendEntriesOfMonth, totalBudget } from '../lib/stats'
 import { useCategoryMap, useStore } from '../state/store'
 import { useUI } from '../state/ui'
 
@@ -29,13 +29,11 @@ export function Stats() {
   const prevComparable = isCurrent ? prev.daily.slice(0, elapsedDays).reduce((a, b) => a + b, 0) : prev.spent
   const delta = prevComparable > 0 ? (summary.spent - prevComparable) / prevComparable : null
 
-  const biggest = useMemo(
-    () =>
-      transactionsOfMonth(data, month)
-        .filter((t) => t.type === 'expense')
-        .sort((a, b) => b.amount - a.amount)[0],
-    [data, month],
-  )
+  // Lo que más pesó este mes (con tarjeta, la cuota que vence este mes).
+  const biggest = useMemo(() => {
+    const top = [...spendEntriesOfMonth(data, month)].sort((a, b) => b.amount - a.amount)[0]
+    return top && { ...top.tx, amount: top.amount }
+  }, [data, month])
 
   const ranked = [...summary.byCategory.entries()].sort((a, b) => b[1] - a[1])
   const topValue = ranked[0]?.[1] ?? 0
@@ -59,7 +57,7 @@ export function Stats() {
         <h1 className="topbar__title">Análisis</h1>
       </header>
 
-      <MonthSwitcher value={month} onChange={setMonth} />
+      <MonthSwitcher value={month} onChange={setMonth} max={lastSpendMonth(data, currentMonth())} />
 
       {summary.expenseCount === 0 ? (
         <EmptyState icon={<BarChart3 size={24} />} title="Sin gastos en este mes">

@@ -7,7 +7,7 @@ Tu control de gastos personal: anotas cada gasto en segundos, se descuenta de tu
 - **Registro rápido**: botón `+` → monto → categoría → listo. Si escribes un detalle que ya usaste ("chicle"), la app recuerda su categoría y su último monto.
 - **Saldo disponible**: saldo inicial + ingresos − gastos, siempre a la vista.
 - **Varias cuentas**: saldo y movimientos por cuenta. Las compras con tarjeta generan deuda sin reducir el efectivo; el pago se registra como traspaso desde una cuenta y no duplica el gasto.
-- **Tarjetas de crédito**: día de corte y día de vencimiento configurables. Las compras se agrupan en ciclos y se muestra lo pendiente por pagar en cada fecha.
+- **Tarjetas de crédito**: día de corte y día de vencimiento configurables. Las compras se agrupan en ciclos y se muestra lo pendiente por pagar en cada fecha. En el presupuesto y en Análisis, cada compra con tarjeta cuenta en el mes en que vence su pago (en cuotas, cada cuota en su mes).
 - **Fuentes de ingreso**: monto previsto, cuenta destino, fecha esperada y repetición mensual opcional. Son previsiones; el saldo solo cambia al registrar el ingreso.
 - **Importación bancaria**: CSV, PDF con texto e imágenes con OCR local. Cada fila se revisa antes de incorporarse, con detección de posibles duplicados y campos incompletos. En tarjetas se puede comparar el total facturado para un vencimiento con lo ya registrado y lo pendiente de importar. Los extractos varían según el banco y pueden necesitar correcciones manuales.
 - **Foto de recibo al registrar un gasto**: en móvil puedes abrir la cámara o elegir una imagen. El OCR propone importe, comercio, fecha y categoría; revisas y confirmas los datos antes de guardar. La foto no se conserva en el movimiento.

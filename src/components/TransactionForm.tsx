@@ -4,7 +4,7 @@ import { dateLabel, dayLabel, today, yesterday } from '../lib/dates'
 import { extractImportText } from '../lib/imports'
 import { formatCLP, formatDigits, formatSigned, parseAmount } from '../lib/money'
 import { suggestReceipt, type ReceiptSuggestion } from '../lib/receipt'
-import { expenseCategories, incomeCategories, noteSuggestions, type Suggestion } from '../lib/stats'
+import { creditCycle, expenseCategories, incomeCategories, noteSuggestions, type Suggestion } from '../lib/stats'
 import type { Transaction } from '../lib/types'
 import { useStore, type TxInput } from '../state/store'
 import { CategoryIcon } from './Icon'
@@ -171,7 +171,11 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
       {type === 'expense' && creditAccount && <div className="field">
         <label htmlFor="tx-installments" className="field__label">Pagar en cuotas sin interés</label>
         <input id="tx-installments" className="input" type="number" min="1" max="60" value={installments} onChange={(e) => setInstallments(Number(e.target.value))} required />
-        <p className="hint">{installments > 1 ? `Compra total ${formatCLP(amount)} · ${installments} pagos de aproximadamente ${formatCLP(Math.round(amount / installments))}.` : '1 cuota: el total se factura en el próximo estado.'} La compra completa cuenta como gasto hoy; los pagos futuros aparecen separados en la tarjeta.</p>
+        <p className="hint">
+          {installments > 1
+            ? `${installments} cuotas de ~${formatCLP(Math.round(amount / installments))}. La primera vence el ${dateLabel(creditCycle(date, creditAccount).dueDate)} y cada una cuenta en tu presupuesto el mes en que vence.`
+            : `Se paga con la tarjeta el ${dateLabel(creditCycle(date, creditAccount).dueDate)}: ahí cuenta en tu presupuesto.`}
+        </p>
       </div>}
       {type === 'transfer' && <div className="field">
         <label htmlFor="tx-destination" className="field__label">Hacia cuenta o tarjeta</label>

@@ -142,12 +142,33 @@ describe('desglose por categoría', () => {
     ])
     const b = categoryBreakdown(d, '2026-09', 'transporte')
     expect(b.total).toBe(9300)
-    expect(b.transactions.map((t) => t.date)).toEqual(['2026-09-05', '2026-09-04', '2026-09-02', '2026-09-01'])
+    expect(b.entries.map((e) => e.date)).toEqual(['2026-09-05', '2026-09-04', '2026-09-02', '2026-09-01'])
     expect(b.byDetail).toEqual([
       { label: 'uber', count: 2, total: 7500 },
       { label: 'Sin detalle', count: 1, total: 1000 },
       { label: 'Metro', count: 1, total: 800 },
     ])
+  })
+
+  it('con tarjeta, el desglose muestra la cuota del mes en que vence', () => {
+    const d = data([
+      tx({ note: 'Pokemon', amount: 59_980, categoryId: 'ocio', date: '2026-10-07', accountId: 'tc' }),
+      tx({ note: 'Celular', amount: 90_000, categoryId: 'ocio', date: '2026-09-20', accountId: 'tc', installments: 3 }),
+      tx({ note: 'Cine', amount: 8_000, categoryId: 'ocio', date: '2026-10-07' }),
+    ], {
+      accounts: [
+        { id: 'principal', name: 'Cuenta principal', kind: 'cash', openingBalance: 0 },
+        { id: 'tc', name: 'Visa', kind: 'credit', openingBalance: 0, closingDay: 25, dueDay: 5 },
+      ],
+    })
+    const oct = categoryBreakdown(d, '2026-10', 'ocio')
+    expect(oct.entries.map((e) => [e.tx.note, e.amount, e.card?.installment])).toEqual([
+      ['Cine', 8_000, undefined],
+      ['Celular', 30_000, 1],
+    ])
+    const nov = categoryBreakdown(d, '2026-11', 'ocio')
+    expect(nov.total).toBe(59_980 + 30_000)
+    expect(nov.entries.find((e) => e.tx.note === 'Pokemon')?.card).toMatchObject({ name: 'Visa', dueDate: '2026-11-05' })
   })
 
   it('los gastos sin categoría van a "otros"', () => {

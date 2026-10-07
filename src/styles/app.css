@@ -627,6 +627,14 @@ fieldset {
   color: var(--brand-ink);
 }
 
+/* "Con tarjeta ya tienes $X para noviembre" en Presupuesto */
+.budget-next {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0;
+  font-size: 13px;
+}
+
 /* Presupuesto del mes: franja simple, sin tarjeta */
 .budget-strip {
   display: flex;
