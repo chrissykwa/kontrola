@@ -92,6 +92,8 @@ function useKeyboardInset(ref: RefObject<HTMLDialogElement | null>, open: boolea
         const covered = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop))
         dialog.style.setProperty('--kb', `${Math.round(covered)}px`)
         dialog.style.setProperty('--vvh', `${Math.round(vv.height)}px`)
+        // Con el panel ya acomodado, el campo donde se escribe no puede quedar fuera de vista.
+        frame = requestAnimationFrame(() => keepFocusVisible(dialog))
       })
     }
     measure()
@@ -105,4 +107,17 @@ function useKeyboardInset(ref: RefObject<HTMLDialogElement | null>, open: boolea
       dialog.style.removeProperty('--vvh')
     }
   }, [ref, open])
+}
+
+/** Desplaza el contenido del panel lo justo para que el campo con foco se vea (sobre el botón fijo de abajo). */
+function keepFocusVisible(dialog: HTMLDialogElement) {
+  const el = document.activeElement
+  const body = dialog.querySelector<HTMLElement>('.sheet__body')
+  if (!(el instanceof HTMLElement) || !body || !body.contains(el)) return
+  const footer = body.querySelector<HTMLElement>('.form__actions')
+  const field = el.getBoundingClientRect()
+  const view = body.getBoundingClientRect()
+  const bottom = view.bottom - (footer && !footer.contains(el) ? footer.offsetHeight : 0) - 8
+  if (field.bottom > bottom) body.scrollTop += field.bottom - bottom
+  else if (field.top < view.top + 8) body.scrollTop -= view.top + 8 - field.top
 }
