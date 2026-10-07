@@ -7,6 +7,7 @@ import { Logo } from './components/Logo'
 import { Sheet } from './components/Sheet'
 import { TransactionForm } from './components/TransactionForm'
 import type { MonthKey } from './lib/dates'
+import { UNLISTED_PREFIX } from './lib/stats'
 import type { Transaction } from './lib/types'
 import { Budget } from './screens/Budget'
 import { Home } from './screens/Home'
@@ -185,7 +186,13 @@ function AppScreens() {
             <CategoryDetail
               categoryId={sheet.categoryId}
               month={sheet.month}
-              onSelectTx={(tx) => setSheet({ kind: 'edit', tx, back: { categoryId: sheet.categoryId, month: sheet.month } })}
+              onSelectTx={(tx) => {
+                // "Otros cargos del estado" no es un gasto editable: se ajusta en Cuentas.
+                if (tx.id.startsWith(UNLISTED_PREFIX)) {
+                  setSheet(null)
+                  navigate('cuentas')
+                } else setSheet({ kind: 'edit', tx, back: { categoryId: sheet.categoryId, month: sheet.month } })
+              }}
             />
           ) : sheet?.kind === 'edit' ? (
             <TransactionForm key={sheet.tx.id} editing={sheet.tx} onDone={afterEdit} />

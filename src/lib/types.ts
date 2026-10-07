@@ -22,7 +22,16 @@ export interface MoneyAccount {
   /** Cuotas sin interés propuestas al registrar una compra; 1 por defecto. */
   defaultInstallments?: number
   openingDueDate?: string
+  /** Total que cobra el banco en un vencimiento (del estado de cuenta), si se anotó. */
+  statementTotals?: StatementTotal[]
+  /** Categoría para los cargos de la tarjeta que no están anotados uno a uno. */
+  chargesCategoryId?: string
   archived?: boolean
+}
+
+export interface StatementTotal {
+  dueDate: string
+  amount: number
 }
 
 export interface IncomeSource {

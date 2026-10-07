@@ -27,7 +27,9 @@ export function TxRow({
   const card = tx.type === 'expense' ? data.settings.accounts.find((a) => a.kind === 'credit' && a.id === tx.accountId) : undefined
   // Con tarjeta: cuándo se paga (o qué cuota es), para que se entienda en qué mes cuenta.
   const cardInfo = entry?.card
-    ? entry.card.installments > 1
+    ? entry.unlisted
+      ? `${entry.card.name} · sin anotar, vence ${dateLabel(entry.card.dueDate)}`
+      : entry.card.installments > 1
       ? `${entry.card.name} · cuota ${entry.card.installment}/${entry.card.installments}`
       : `${entry.card.name} · se paga ${dateLabel(entry.card.dueDate)}`
     : card
@@ -40,7 +42,7 @@ export function TxRow({
   const title = tx.note || (isAdjustment ? 'Ajuste de saldo' : isTransfer ? 'Traspaso entre cuentas' : category?.name ?? 'Sin categoría')
   const subtitle = [
     isAdjustment ? 'Ajuste' : isTransfer ? 'Traspaso / pago de tarjeta' : tx.note && showCategory ? category?.name : null,
-    showDate ? shortDayLabel(tx.date) : null,
+    showDate && !entry?.unlisted ? shortDayLabel(tx.date) : null,
     cardInfo,
   ]
     .filter(Boolean)

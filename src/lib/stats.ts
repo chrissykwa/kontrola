@@ -13,11 +13,13 @@ export function currentBalance(data: AppData): number {
 export function accountBalance(data: AppData, accountId: string): number {
   const account = data.settings.accounts.find((a) => a.id === accountId)
   if (!account) return 0
+  // En tarjetas, lo que el banco cobra de más en un estado (cargos no anotados) también es deuda.
+  const unlisted = account.kind === 'credit' ? cardDues(data, account).reduce((n, d) => n + d.extra, 0) : 0
   return data.transactions.reduce((sum, t) => {
     if ((t.accountId ?? 'principal') === accountId) sum += signedAmount(t)
     if (t.type === 'transfer' && t.toAccountId === accountId) sum += t.amount
     return sum
-  }, account.openingBalance)
+  }, account.openingBalance - unlisted)
 }
 
 const dayInMonth = (key: MonthKey, day: number) => `${key}-${String(Math.min(day, daysInMonth(key))).padStart(2, '0')}`
@@ -54,31 +56,56 @@ export function installmentSchedule(t: Transaction, account: MoneyAccount): { du
   }))
 }
 
+/** Lo que vence en una fecha de pago de la tarjeta. */
+export interface CardDue {
+  dueDate: string
+  /** Compras y cuotas anotadas en Kontrola que vencen ese día. */
+  registered: number
+  purchases: number
+  /** Deuda inicial de la tarjeta (de antes de usar Kontrola), si vence ese día. */
+  opening: number
+  /** Total del estado de cuenta, si se anotó. */
+  statement?: number
+  /** Lo que el banco cobra de más respecto de lo anotado (cargos no anotados uno a uno). */
+  extra: number
+}
+
+/** Vencimientos de una tarjeta: lo anotado, la deuda inicial y el total del estado si se conoce. */
+export function cardDues(data: AppData, card: MoneyAccount): CardDue[] {
+  const dues = new Map<string, CardDue>()
+  const due = (dueDate: string) => {
+    const d = dues.get(dueDate) ?? { dueDate, registered: 0, purchases: 0, opening: 0, extra: 0 }
+    dues.set(dueDate, d)
+    return d
+  }
+  if (card.openingBalance < 0) due(card.openingDueDate ?? creditCycle(today(), card).dueDate).opening = -card.openingBalance
+  for (const t of data.transactions) {
+    if (t.type !== 'expense' || (t.accountId ?? 'principal') !== card.id) continue
+    for (const { dueDate, amount } of installmentSchedule(t, card)) {
+      const d = due(dueDate)
+      d.registered += amount
+      d.purchases++
+    }
+  }
+  for (const st of card.statementTotals ?? []) {
+    const d = due(st.dueDate)
+    d.statement = st.amount
+    d.extra = Math.max(0, st.amount - d.registered - d.opening)
+  }
+  return [...dues.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+}
+
 /** Compras de tarjeta agrupadas por vencimiento, menos los pagos asignados a cada ciclo. */
 export function creditBills(data: AppData, accountId: string): { dueDate: string; amount: number; purchases: number }[] {
   const account = data.settings.accounts.find((a) => a.id === accountId)
   if (!account || account.kind !== 'credit') return []
-  const bills = new Map<string, { dueDate: string; amount: number; purchases: number }>()
-  if (account.openingBalance < 0) {
-    const dueDate = account.openingDueDate ?? creditCycle(today(), account).dueDate
-    bills.set(dueDate, { dueDate, amount: -account.openingBalance, purchases: 0 })
-  }
-  for (const t of data.transactions) {
-    if (t.type !== 'expense' || (t.accountId ?? 'principal') !== accountId) continue
-    for (const installment of installmentSchedule(t, account)) {
-      const { dueDate } = installment
-      const bill = bills.get(dueDate) ?? { dueDate, amount: 0, purchases: 0 }
-      bill.amount += installment.amount
-      bill.purchases++
-      bills.set(dueDate, bill)
-    }
-  }
   // Los pagos se aplican primero al vencimiento pendiente más antiguo.
   let paid = data.transactions.filter((t) => t.type === 'transfer' && t.toAccountId === accountId).reduce((n, t) => n + t.amount, 0)
-  return [...bills.values()].sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map((bill) => {
-    const used = Math.min(paid, bill.amount)
+  return cardDues(data, account).map((d) => {
+    const total = d.registered + d.opening + d.extra
+    const used = Math.min(paid, total)
     paid -= used
-    return { ...bill, amount: bill.amount - used }
+    return { dueDate: d.dueDate, amount: total - used, purchases: d.purchases }
   })
 }
 
@@ -96,6 +123,18 @@ export interface SpendEntry {
   amount: number
   /** Solo con tarjeta. */
   card?: { name: string; dueDate: string; installment: number; installments: number }
+  /** Cargos de la tarjeta que no están anotados uno a uno (deuda inicial o diferencia con el estado). */
+  unlisted?: boolean
+}
+
+/** Prefijo de los "movimientos" que representan cargos del estado no anotados (no se pueden editar). */
+export const UNLISTED_PREFIX = 'estado:'
+
+/** Categoría donde van los cargos no anotados de una tarjeta: la elegida, una llamada "Tarjeta…", u Otros. */
+export function cardChargesCategory(data: AppData, card: MoneyAccount): string {
+  const expense = data.categories.filter((c) => c.kind === 'expense' && !c.archived)
+  if (card.chargesCategoryId && expense.some((c) => c.id === card.chargesCategoryId)) return card.chargesCategoryId
+  return expense.find((c) => /tarjeta|cr[eé]dito/i.test(c.name))?.id ?? 'otros'
 }
 
 const entriesCache = new WeakMap<AppData, SpendEntry[]>()
@@ -121,6 +160,28 @@ export function spendEntries(data: AppData): SpendEntry[] {
         card: { name: card.name, dueDate, installment: i + 1, installments: schedule.length },
       }),
     )
+  }
+  for (const card of cards.values()) {
+    for (const d of cardDues(data, card)) {
+      const amount = d.opening + d.extra
+      if (amount <= 0) continue
+      entries.push({
+        tx: {
+          id: `${UNLISTED_PREFIX}${card.id}:${d.dueDate}`,
+          type: 'expense',
+          amount,
+          categoryId: cardChargesCategory(data, card),
+          note: 'Otros cargos del estado',
+          date: d.dueDate,
+          createdAt: 0,
+          accountId: card.id,
+        },
+        date: d.dueDate,
+        amount,
+        card: { name: card.name, dueDate: d.dueDate, installment: 1, installments: 1 },
+        unlisted: true,
+      })
+    }
   }
   entriesCache.set(data, entries)
   return entries
