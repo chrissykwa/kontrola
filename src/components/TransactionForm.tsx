@@ -56,6 +56,7 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
   const [photoError, setPhotoError] = useState('')
   const [photoProposal, setPhotoProposal] = useState<{ url: string; fileName: string; result: ReceiptSuggestion } | null>(null)
   const photoUrl = useRef<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   useEffect(() => () => { if (photoUrl.current) URL.revokeObjectURL(photoUrl.current) }, [])
 
   const amount = parseAmount(amountText)
@@ -133,11 +134,13 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
     if (result.date) setDate(result.date)
     if (result.categoryId) setCategoryId(result.categoryId)
     setPhotoProposal(null)
+    // El monto y la categoría quedan arriba: se vuelve al inicio del panel para revisarlos.
+    formRef.current?.closest('.sheet__body')?.scrollTo({ top: 0, behavior: 'smooth' })
     toast({ message: 'Datos propuestos aplicados. Revisa antes de guardar.' })
   }
 
   return (
-    <form className="form" onSubmit={submit}>
+    <form className="form" onSubmit={submit} ref={formRef}>
       <div className="segmented" role="radiogroup" aria-label="Tipo de movimiento">
           {(['expense', 'income', 'transfer'] as const).map((t) => (
           <button
@@ -153,26 +156,6 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
         ))}
       </div>
 
-      {type === 'expense' && <section className="receipt-entry" aria-label="Registrar gasto con foto">
-        <div className="receipt-entry__intro"><strong>¿Tienes un recibo?</strong><span>Lo leemos y preparamos el gasto para que lo confirmes.</span></div>
-        <div className="receipt-entry__actions">
-          <label className="receipt-picker"><Camera size={18} aria-hidden="true" /> Tomar foto<input type="file" accept="image/*" capture="environment" onChange={scanPhoto} disabled={photoBusy} aria-label="Tomar foto del recibo" /></label>
-          <label className="receipt-picker"><ImagePlus size={18} aria-hidden="true" /> Subir imagen<input type="file" accept="image/*" onChange={scanPhoto} disabled={photoBusy} aria-label="Subir imagen del recibo" /></label>
-        </div>
-        {photoBusy && <p className="hint" role="status">Leyendo foto… Puede tardar unos segundos la primera vez.</p>}
-        {photoError && <p className="alert alert--info" role="alert">{photoError}</p>}
-        {photoProposal && <div className="receipt-proposal">
-          <img src={photoProposal.url} alt={`Vista previa de ${photoProposal.fileName}`} />
-          <div><strong>Propuesta para revisar</strong>
-            <span>Importe: {photoProposal.result.amount ? formatCLP(photoProposal.result.amount) : 'por completar'}</span>
-            <span>Comercio: {photoProposal.result.note || 'por completar'}</span>
-            <span>Fecha: {photoProposal.result.date ? dateLabel(photoProposal.result.date) : 'por completar'}</span>
-            <span>Categoría: {data.categories.find((c) => c.id === photoProposal.result.categoryId)?.name ?? 'por completar'}</span>
-            <button type="button" className="btn btn--ghost" onClick={applyPhoto}>Usar estos datos</button>
-          </div>
-        </div>}
-        <p className="hint">La foto se analiza en este dispositivo y no se guarda con el movimiento. El OCR puede descargar su modelo la primera vez.</p>
-      </section>}
 
       <div className="field">
         <label htmlFor="tx-account" className="field__label">{type === 'transfer' ? 'Desde cuenta' : 'Cuenta o tarjeta'}</label>
@@ -318,6 +301,28 @@ function TxEditor({ editing, onDone }: { editing?: Transaction; onDone: () => vo
           />
         </div>
       </fieldset>
+
+      {/* Foto del recibo: al final, para que al abrir se vea primero el monto. */}
+      {type === 'expense' && <section className="receipt-entry" aria-label="Registrar gasto con foto">
+        <div className="receipt-entry__intro"><strong>¿Tienes un recibo?</strong><span>Lo leemos y completamos el gasto para que lo confirmes.</span></div>
+        <div className="receipt-entry__actions">
+          <label className="receipt-picker"><Camera size={18} aria-hidden="true" /> Tomar foto<input type="file" accept="image/*" capture="environment" onChange={scanPhoto} disabled={photoBusy} aria-label="Tomar foto del recibo" /></label>
+          <label className="receipt-picker"><ImagePlus size={18} aria-hidden="true" /> Subir imagen<input type="file" accept="image/*" onChange={scanPhoto} disabled={photoBusy} aria-label="Subir imagen del recibo" /></label>
+        </div>
+        {photoBusy && <p className="hint" role="status">Leyendo foto… Puede tardar unos segundos la primera vez.</p>}
+        {photoError && <p className="alert alert--info" role="alert">{photoError}</p>}
+        {photoProposal && <div className="receipt-proposal">
+          <img src={photoProposal.url} alt={`Vista previa de ${photoProposal.fileName}`} />
+          <div><strong>Propuesta para revisar</strong>
+            <span>Importe: {photoProposal.result.amount ? formatCLP(photoProposal.result.amount) : 'por completar'}</span>
+            <span>Comercio: {photoProposal.result.note || 'por completar'}</span>
+            <span>Fecha: {photoProposal.result.date ? dateLabel(photoProposal.result.date) : 'por completar'}</span>
+            <span>Categoría: {data.categories.find((c) => c.id === photoProposal.result.categoryId)?.name ?? 'por completar'}</span>
+            <button type="button" className="btn btn--ghost" onClick={applyPhoto}>Usar estos datos</button>
+          </div>
+        </div>}
+        <p className="hint">Se lee en tu teléfono y la foto no se guarda.</p>
+      </section>}
 
       <div className="form__actions">
         {editing && (
