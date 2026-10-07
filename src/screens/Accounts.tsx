@@ -6,13 +6,17 @@ import { useToast } from '../components/Toast'
 import { dateLabel, monthKeyOf, monthLabel, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
 import { incomeOccurrences, predictExpenses } from '../lib/planning'
-import { accountBalance, creditBills, creditCycle } from '../lib/stats'
+import { accountBalance, cardDues, creditBills, creditCycle, expenseCategories } from '../lib/stats'
 import { newId } from '../lib/storage'
 import type { IncomeSource, MoneyAccount } from '../lib/types'
 import { useStore } from '../state/store'
 import { useUI } from '../state/ui'
 
-type Editor = { kind: 'account'; item?: MoneyAccount } | { kind: 'source'; item?: IncomeSource } | null
+type Editor =
+  | { kind: 'account'; item?: MoneyAccount }
+  | { kind: 'source'; item?: IncomeSource }
+  | { kind: 'statement'; card: MoneyAccount; dueDate: string }
+  | null
 
 export function Accounts() {
   const { data, updateSettings } = useStore()
@@ -23,6 +27,12 @@ export function Accounts() {
     updateSettings({ accounts: data.settings.accounts.some((a) => a.id === item.id)
       ? data.settings.accounts.map((a) => a.id === item.id ? item : a)
       : [...data.settings.accounts, item] })
+    setEditor(null)
+  }
+  const saveStatement = (card: MoneyAccount, dueDate: string, amount: number | null) => {
+    const others = (card.statementTotals ?? []).filter((st) => st.dueDate !== dueDate)
+    const statementTotals = amount === null ? others : [...others, { dueDate, amount }].sort((x, y) => x.dueDate.localeCompare(y.dueDate))
+    updateSettings({ accounts: data.settings.accounts.map((a) => (a.id === card.id ? { ...a, statementTotals } : a)) })
     setEditor(null)
   }
   const saveSource = (item: IncomeSource) => {
@@ -58,14 +68,27 @@ export function Accounts() {
     </section>
 
     {data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived).map((a) => {
-      const bills = creditBills(data, a.id).filter((b) => b.amount > 0)
+      const nextDue = creditCycle(today(), a).dueDate
+      const bills = creditBills(data, a.id).filter((b) => b.amount > 0 || b.dueDate === nextDue)
+      if (!bills.some((b) => b.dueDate === nextDue)) bills.push({ dueDate: nextDue, amount: 0, purchases: 0 })
+      bills.sort((x, y) => x.dueDate.localeCompare(y.dueDate))
+      const statements = new Map((a.statementTotals ?? []).map((st) => [st.dueDate, st.amount]))
       return <section className="settings-group" key={a.id} aria-label={`Próximos pagos de ${a.name}`}>
         <h2 className="settings-group__title">{a.name}: próximos pagos</h2>
         <div className="card card--list">
-          {bills.length ? bills.map((b) => <div className="settings-row is-static" key={b.dueDate}>
-            <CreditCard size={20} /><span className="settings-row__text"><span>Vence {dateLabel(b.dueDate)}</span><span className="muted small">{b.purchases} cargo(s), incluidas cuotas · calculado desde el corte</span></span>
-            <strong>{formatCLP(b.amount)}</strong>
-          </div>) : <p className="account-empty">No hay compras pendientes en esta tarjeta.</p>}
+          {bills.map((b) => <button type="button" className="settings-row" key={b.dueDate} onClick={() => setEditor({ kind: 'statement', card: a, dueDate: b.dueDate })}>
+            <CreditCard size={20} aria-hidden="true" />
+            <span className="settings-row__text">
+              <span>Vence {dateLabel(b.dueDate)}</span>
+              <span className="muted small">
+                {statements.has(b.dueDate)
+                  ? 'Total del estado anotado'
+                  : `${b.purchases ? `${b.purchases} cargo(s) anotado(s) · ` : ''}toca para poner el total del estado`}
+              </span>
+            </span>
+            <span className="settings-row__value">{formatCLP(b.amount)}</span>
+            <ChevronRight size={18} className="muted" aria-hidden="true" />
+          </button>)}
         </div>
       </section>
     })}
@@ -91,7 +114,25 @@ export function Accounts() {
       </div>
     </section>
 
-    <Sheet open={editor !== null} title={editor?.kind === 'account' ? editor.item ? 'Editar cuenta' : 'Nueva cuenta' : editor?.item ? 'Editar fuente' : 'Nueva fuente'} onClose={() => setEditor(null)}>
+    <Sheet
+      open={editor !== null}
+      title={
+        editor?.kind === 'statement'
+          ? `${editor.card.name}: vence ${dateLabel(editor.dueDate)}`
+          : editor?.kind === 'account'
+            ? editor.item ? 'Editar cuenta' : 'Nueva cuenta'
+            : editor?.item ? 'Editar fuente' : 'Nueva fuente'
+      }
+      onClose={() => setEditor(null)}
+    >
+      {editor?.kind === 'statement' && (
+        <StatementEditor
+          key={`${editor.card.id}-${editor.dueDate}`}
+          card={data.settings.accounts.find((x) => x.id === editor.card.id) ?? editor.card}
+          dueDate={editor.dueDate}
+          onSave={saveStatement}
+        />
+      )}
       {editor?.kind === 'account' && <AccountEditor key={editor.item?.id ?? 'new-account'} item={editor.item} onSave={saveAccount} canArchive={data.settings.accounts.filter((a) => !a.archived).length > 1 && (!editor.item || accountBalance(data, editor.item.id) === 0) && (editor.item?.kind !== 'cash' || data.settings.accounts.some((a) => a.kind === 'cash' && !a.archived && a.id !== editor.item?.id)) && !data.settings.incomeSources.some((s) => !s.archived && s.accountId === editor.item?.id)} />}
       {editor?.kind === 'source' && <SourceEditor key={editor.item?.id ?? 'new-source'} item={editor.item} accounts={data.settings.accounts.filter((a) => a.kind === 'cash' && !a.archived)} onSave={saveSource} />}
     </Sheet>
@@ -99,6 +140,8 @@ export function Accounts() {
 }
 
 function AccountEditor({ item, onSave, canArchive }: { item?: MoneyAccount; onSave: (a: MoneyAccount) => void; canArchive: boolean }) {
+  const { data } = useStore()
+  const [chargesCategoryId, setChargesCategoryId] = useState(item?.chargesCategoryId ?? '')
   const [name, setName] = useState(item?.name ?? '')
   const [kind, setKind] = useState<MoneyAccount['kind']>(item?.kind ?? 'cash')
   const [opening, setOpening] = useState<number | null>(Math.abs(item?.openingBalance ?? 0))
@@ -123,6 +166,8 @@ function AccountEditor({ item, onSave, canArchive }: { item?: MoneyAccount; onSa
     onSave({ id: item?.id ?? newId(), name: name.trim(), kind, openingBalance: kind === 'credit' ? -(opening ?? 0) : opening ?? 0,
       closingDay, dueDay, defaultInstallments: kind === 'credit' ? defaultInstallments : undefined,
       cycleOverrides: kind === 'credit' ? cycles : undefined,
+      statementTotals: kind === 'credit' ? item?.statementTotals : undefined,
+      chargesCategoryId: kind === 'credit' && chargesCategoryId ? chargesCategoryId : undefined,
       openingDueDate: item?.openingDueDate ?? (kind === 'credit' ? creditCycle(today(), { id: '', name: '', kind, openingBalance: 0, closingDay, dueDay, cycleOverrides: cycles }).dueDate : undefined), archived: item?.archived })
     toast({ message: 'Cuenta guardada' })
   }
@@ -133,6 +178,14 @@ function AccountEditor({ item, onSave, canArchive }: { item?: MoneyAccount; onSa
     {kind === 'credit' && <><div className="field"><label className="field__label" htmlFor="closing-day">Día de corte estimado</label><input id="closing-day" className="input" type="number" min="1" max="31" value={closingDay} onChange={(e) => setClosingDay(Number(e.target.value))} required /></div>
       <div className="field"><label className="field__label" htmlFor="due-day">Día de pago estimado del mes siguiente</label><input id="due-day" className="input" type="number" min="1" max="31" value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} required /></div>
       <div className="field"><label className="field__label" htmlFor="default-installments">Cuotas sugeridas por compra <span className="field__optional">(opcional)</span></label><input id="default-installments" className="input" type="number" min="1" max="60" value={defaultInstallments} onChange={(e) => setDefaultInstallments(Number(e.target.value))} /></div>
+      <div className="field">
+        <label className="field__label" htmlFor="charges-category">Categoría de los cargos sin anotar</label>
+        <select id="charges-category" className="input" value={chargesCategoryId} onChange={(e) => setChargesCategoryId(e.target.value)}>
+          <option value="">Automática (una llamada “Tarjeta…” u Otros)</option>
+          {expenseCategories(data).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <p className="hint">Ahí se suman la deuda inicial y lo que el estado cobra de más respecto de lo que anotaste.</p>
+      </div>
       <p className="hint">1 = pago único. Por ahora las cuotas siempre se calculan sin interés.</p>
       <div className="field"><strong>Fechas reales por mes</strong><p className="hint">Cuando el banco publique un corte diferente, añádelo aquí. Las fechas estimadas se usan solo en los meses sin fecha real.</p>
         {cycles.map((cycle) => <div className="account-cycle" key={cycle.month}><span>{monthLabel(cycle.month)}: corte {dateLabel(cycle.closeDate)} · vence {cycle.dueDate ? dateLabel(cycle.dueDate) : 'día estimado'}</span><button type="button" className="btn btn--ghost" onClick={() => setCycles((current) => current.filter((c) => c.month !== cycle.month))}>Quitar</button></div>)}
@@ -169,5 +222,42 @@ function SourceEditor({ item, accounts, onSave }: { item?: IncomeSource; account
     {recurring && <div className="field"><label className="field__label" htmlFor="source-interval">Cada cuántos meses</label><input id="source-interval" className="input" type="number" min="1" max="60" value={intervalMonths} onChange={(e) => setIntervalMonths(Number(e.target.value))} required /></div>}
     <button type="submit" className="btn btn--primary btn--block">Guardar fuente</button>
     {item && <button type="button" className="btn btn--danger-ghost" onClick={() => onSave({ ...item, archived: true })}>Archivar fuente</button>}
+  </form>
+}
+
+/** Total que cobra el banco en un vencimiento: lo que falte respecto de lo anotado se suma solo. */
+function StatementEditor({ card, dueDate, onSave }: { card: MoneyAccount; dueDate: string; onSave: (card: MoneyAccount, dueDate: string, amount: number | null) => void }) {
+  const { data } = useStore()
+  const due = cardDues(data, card).find((d) => d.dueDate === dueDate)
+  const known = (due?.registered ?? 0) + (due?.opening ?? 0)
+  const [amount, setAmount] = useState<number | null>(due?.statement ?? null)
+  const missing = amount === null ? 0 : Math.max(0, amount - known)
+  const month = monthLabel(monthKeyOf(dueDate)).split(' ')[0].toLowerCase()
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    onSave(card, dueDate, amount)
+  }
+  return <form className="form" onSubmit={submit}>
+    <div className="statement-known">
+      <span className="muted small">Anotado en Kontrola para este pago</span>
+      <strong>{formatCLP(known)}</strong>
+      <span className="muted small">
+        {due?.purchases ? `${due.purchases} cargo(s) y cuotas` : 'Sin cargos anotados'}
+        {due?.opening ? ` · deuda inicial ${formatCLP(due.opening)}` : ''}
+      </span>
+    </div>
+    <div className="field">
+      <label htmlFor="statement-total" className="field__label">Total que cobra el banco</label>
+      <AmountInput id="statement-total" value={amount} onChange={setAmount} autoFocus describedBy="statement-help" />
+      <p id="statement-help" className="hint">
+        {amount !== null && missing > 0
+          ? `Se suman ${formatCLP(missing)} como “Otros cargos del estado” en tu presupuesto de ${month}.`
+          : `Es el “total facturado” o “monto a pagar” del estado de cuenta. Si es más de lo anotado, la diferencia se suma sola a ${month}.`}
+      </p>
+    </div>
+    <button type="submit" className="btn btn--primary btn--block">Guardar</button>
+    {due?.statement !== undefined && (
+      <button type="button" className="btn btn--danger-ghost" onClick={() => onSave(card, dueDate, null)}>Quitar total del estado</button>
+    )}
   </form>
 }

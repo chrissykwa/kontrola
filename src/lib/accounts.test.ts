@@ -65,6 +65,48 @@ describe('cuentas y tarjetas', () => {
   })
 })
 
+describe('estado de cuenta de la tarjeta', () => {
+  const setup = () => {
+    const data = createInitialData()
+    data.categories.push({ id: 'tc', name: 'Tarjeta de Crédito', icon: 'receipt', color: '#3b82f6', kind: 'expense', budget: 0 })
+    data.settings.accounts.push({ id: 'visa', name: 'Visa', kind: 'credit', openingBalance: -197_227, openingDueDate: '2026-11-05', closingDay: 25, dueDay: 5 })
+    data.transactions = [{ ...tx('poke', 'expense', 109_960, '2026-10-07', 'visa'), categoryId: 'compras' }]
+    return data
+  }
+
+  it('la deuda inicial cuenta en el presupuesto del mes en que vence, en la categoría de la tarjeta', () => {
+    const data = setup()
+    const nov = monthSummary(data, '2026-11')
+    expect(nov.spent).toBe(307_187)
+    expect(nov.byCategory.get('tc')).toBe(197_227)
+    expect(nov.byCategory.get('compras')).toBe(109_960)
+  })
+
+  it('con el total del estado, lo que falta anotar se suma como "otros cargos" sin duplicar', () => {
+    const data = setup()
+    data.settings.accounts[1].statementTotals = [{ dueDate: '2026-11-05', amount: 420_000 }]
+    expect(monthSummary(data, '2026-11').spent).toBe(420_000)
+    expect(creditBills(data, 'visa')).toEqual([{ dueDate: '2026-11-05', amount: 420_000, purchases: 1 }])
+    expect(accountBalance(data, 'visa')).toBe(-420_000)
+    // Si después anotas un cargo que ya venía en el estado, el total no cambia.
+    data.transactions.push({ ...tx('celu', 'expense', 70_000, '2026-10-02', 'visa'), categoryId: 'compras' })
+    expect(monthSummary(data, '2026-11').spent).toBe(420_000)
+    // Y al pagar la tarjeta (traspaso), la deuda baja sin sumar gasto.
+    data.transactions.push(tx('pago', 'transfer', 420_000, '2026-11-05', 'principal', 'visa'))
+    expect(accountBalance(data, 'visa')).toBe(0)
+    expect(monthSummary(data, '2026-11').spent).toBe(420_000)
+  })
+
+  it('guarda los totales del estado y la categoría en los respaldos', () => {
+    const data = setup()
+    data.settings.accounts[1].statementTotals = [{ dueDate: '2026-11-05', amount: 420_000 }, { dueDate: 'mal', amount: 1 }]
+    data.settings.accounts[1].chargesCategoryId = 'tc'
+    const card = normalize(data).settings.accounts[1]
+    expect(card.statementTotals).toEqual([{ dueDate: '2026-11-05', amount: 420_000 }])
+    expect(card.chargesCategoryId).toBe('tc')
+  })
+})
+
 describe('importación y previsión', () => {
   it('lee movimientos agrupados por fechas en español e ignora el saldo superior', () => {
     const data = createInitialData()

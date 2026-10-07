@@ -627,6 +627,22 @@ fieldset {
   color: var(--brand-ink);
 }
 
+/* Estado de la tarjeta: lo ya anotado, antes del total del banco */
+.statement-known {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.statement-known strong {
+  font-size: 22px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
 /* "Con tarjeta ya tienes $X para noviembre" en Presupuesto */
 .budget-next {
   align-self: flex-start;

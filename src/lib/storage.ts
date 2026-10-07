@@ -68,6 +68,12 @@ function normalizeAccount(v: unknown): MoneyAccount | null {
     cycleOverrides: Array.isArray(v.cycleOverrides) ? v.cycleOverrides.filter((cycle): cycle is Record<string, unknown> => isObj(cycle) && isStr(cycle.month) && isStr(cycle.closeDate) && /^\d{4}-\d{2}$/.test(cycle.month) && validISO(cycle.closeDate) && cycle.closeDate.startsWith(cycle.month) && (!isStr(cycle.dueDate) || validISO(cycle.dueDate)))
       .map((cycle) => ({ month: cycle.month as string, closeDate: cycle.closeDate as string, dueDate: isStr(cycle.dueDate) ? cycle.dueDate : undefined })) : undefined,
     openingDueDate: isStr(v.openingDueDate) && /^\d{4}-\d{2}-\d{2}$/.test(v.openingDueDate) ? v.openingDueDate : undefined,
+    statementTotals: Array.isArray(v.statementTotals)
+      ? v.statementTotals
+          .filter((st): st is Record<string, unknown> => isObj(st) && isStr(st.dueDate) && validISO(st.dueDate) && isNum(st.amount) && st.amount >= 0)
+          .map((st) => ({ dueDate: st.dueDate as string, amount: Math.round(st.amount as number) }))
+      : undefined,
+    chargesCategoryId: isStr(v.chargesCategoryId) ? v.chargesCategoryId : undefined,
     archived: v.archived === true,
   }
 }
