@@ -82,6 +82,63 @@ export function creditBills(data: AppData, accountId: string): { dueDate: string
   })
 }
 
+/**
+ * Cuándo pesa un gasto en el presupuesto y en Análisis.
+ * - Al contado (cuenta o efectivo): el día del gasto, por el total.
+ * - Con tarjeta de crédito: el día en que vence el pago de la tarjeta, cuota a cuota
+ *   (una compra del 7 oct que vence el 5 nov cuenta en noviembre; 3 cuotas = 3 meses).
+ * Los pagos de la tarjeta son traspasos, así que no se cuentan de nuevo.
+ */
+export interface SpendEntry {
+  tx: Transaction
+  /** Fecha en que cuenta: la del gasto, o el vencimiento de la tarjeta. */
+  date: string
+  amount: number
+  /** Solo con tarjeta. */
+  card?: { name: string; dueDate: string; installment: number; installments: number }
+}
+
+const entriesCache = new WeakMap<AppData, SpendEntry[]>()
+
+export function spendEntries(data: AppData): SpendEntry[] {
+  const cached = entriesCache.get(data)
+  if (cached) return cached
+  const cards = new Map(data.settings.accounts.filter((a) => a.kind === 'credit').map((a) => [a.id, a]))
+  const entries: SpendEntry[] = []
+  for (const t of data.transactions) {
+    if (t.type !== 'expense') continue
+    const card = cards.get(t.accountId ?? 'principal')
+    if (!card) {
+      entries.push({ tx: t, date: t.date, amount: t.amount })
+      continue
+    }
+    const schedule = installmentSchedule(t, card)
+    schedule.forEach(({ dueDate, amount }, i) =>
+      entries.push({
+        tx: t,
+        date: dueDate,
+        amount,
+        card: { name: card.name, dueDate, installment: i + 1, installments: schedule.length },
+      }),
+    )
+  }
+  entriesCache.set(data, entries)
+  return entries
+}
+
+/** Último mes con gastos por pagar (cuotas de tarjeta que vencen más adelante), o el actual. */
+export function lastSpendMonth(data: AppData, current: MonthKey): MonthKey {
+  return spendEntries(data).reduce((max, e) => {
+    const k = monthKeyOf(e.date)
+    return k > max ? k : max
+  }, current)
+}
+
+/** Gastos que cuentan en un mes (ver `spendEntries`). */
+export function spendEntriesOfMonth(data: AppData, key: MonthKey): SpendEntry[] {
+  return spendEntries(data).filter((e) => monthKeyOf(e.date) === key)
+}
+
 export function transactionsOfMonth(data: AppData, key: MonthKey): Transaction[] {
   return data.transactions.filter((t) => monthKeyOf(t.date) === key)
 }
@@ -102,16 +159,15 @@ export function monthSummary(data: AppData, key: MonthKey): MonthSummary {
   let spent = 0
   let income = 0
   let expenseCount = 0
+  for (const e of spendEntriesOfMonth(data, key)) {
+    spent += e.amount
+    expenseCount++
+    daily[Number(e.date.slice(8, 10)) - 1] += e.amount
+    const cat = e.tx.categoryId ?? 'otros'
+    byCategory.set(cat, (byCategory.get(cat) ?? 0) + e.amount)
+  }
   for (const t of transactionsOfMonth(data, key)) {
-    if (t.type === 'expense') {
-      spent += t.amount
-      expenseCount++
-      daily[Number(t.date.slice(8, 10)) - 1] += t.amount
-      const cat = t.categoryId ?? 'otros'
-      byCategory.set(cat, (byCategory.get(cat) ?? 0) + t.amount)
-    } else if (t.type === 'income') {
-      income += t.amount
-    }
+    if (t.type === 'income') income += t.amount
   }
   return { spent, income, byCategory, daily, expenseCount }
 }
@@ -124,8 +180,8 @@ export interface DetailGroup {
 }
 
 export interface CategoryBreakdown {
-  /** Gastos de la categoría en el mes, del más reciente al más antiguo. */
-  transactions: Transaction[]
+  /** Gastos que cuentan en el mes (con tarjeta: la cuota que vence ese mes), del más reciente al más antiguo. */
+  entries: SpendEntry[]
   total: number
   /** Gastos agrupados por detalle (sin distinguir mayúsculas), del que suma más al que menos. */
   byDetail: DetailGroup[]
@@ -133,21 +189,21 @@ export interface CategoryBreakdown {
 
 /** Desglose de una categoría en un mes. `categoryId` es la llave de `monthSummary().byCategory`. */
 export function categoryBreakdown(data: AppData, key: MonthKey, categoryId: string): CategoryBreakdown {
-  const transactions = transactionsOfMonth(data, key)
-    .filter((t) => t.type === 'expense' && (t.categoryId ?? 'otros') === categoryId)
-    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+  const entries = spendEntriesOfMonth(data, key)
+    .filter((e) => (e.tx.categoryId ?? 'otros') === categoryId)
+    .sort((a, b) => b.tx.date.localeCompare(a.tx.date) || b.tx.createdAt - a.tx.createdAt)
   const groups = new Map<string, DetailGroup>()
-  for (const t of transactions) {
-    const note = t.note.trim()
+  for (const { tx, amount } of entries) {
+    const note = tx.note.trim()
     const id = note.toLocaleLowerCase('es')
     const g = groups.get(id) ?? { label: note || 'Sin detalle', count: 0, total: 0 }
     g.count++
-    g.total += t.amount
+    g.total += amount
     groups.set(id, g)
   }
   return {
-    transactions,
-    total: transactions.reduce((a, t) => a + t.amount, 0),
+    entries,
+    total: entries.reduce((a, e) => a + e.amount, 0),
     byDetail: [...groups.values()].sort((a, b) => b.total - a.total || b.count - a.count),
   }
 }
@@ -222,10 +278,9 @@ export function budgetStatus(spent: number, budget: number): 'none' | 'ok' | 'wa
 /** Gasto total de los últimos `n` meses terminando en `key` (el más antiguo primero). */
 export function monthlyTotals(data: AppData, key: MonthKey, n: number): { key: MonthKey; spent: number }[] {
   const totals = new Map<MonthKey, number>()
-  for (const t of data.transactions) {
-    if (t.type !== 'expense') continue
-    const k = monthKeyOf(t.date)
-    totals.set(k, (totals.get(k) ?? 0) + t.amount)
+  for (const e of spendEntries(data)) {
+    const k = monthKeyOf(e.date)
+    totals.set(k, (totals.get(k) ?? 0) + e.amount)
   }
   return Array.from({ length: n }, (_, i) => {
     const k = shiftMonth(key, i - (n - 1))

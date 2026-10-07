@@ -30,7 +30,9 @@ describe('cuentas y tarjetas', () => {
     data.transactions = [tx('cafe', 'expense', 12_000, '2026-10-20', 'visa'), tx('pago', 'transfer', 5_000, '2026-11-10', 'principal', 'visa')]
     expect(currentBalance(data)).toBe(95_000)
     expect(accountBalance(data, 'visa')).toBe(-7_000)
-    expect(monthSummary(data, '2026-11').spent).toBe(0)
+    // La compra cuenta cuando se paga la tarjeta (vence el 10 nov) y el pago (traspaso) no suma otra vez.
+    expect(monthSummary(data, '2026-10').spent).toBe(0)
+    expect(monthSummary(data, '2026-11').spent).toBe(12_000)
     expect(creditBills(data, 'visa')).toEqual([{ dueDate: '2026-11-10', amount: 7_000, purchases: 1 }])
   })
 
@@ -56,6 +58,8 @@ describe('cuentas y tarjetas', () => {
       { dueDate: '2026-12-12', amount: 3_334, purchases: 1 },
       { dueDate: '2027-01-10', amount: 3_333, purchases: 1 },
     ])
+    // Cada cuota pesa en el presupuesto del mes en que vence.
+    expect(['2026-10', '2026-11', '2026-12', '2027-01'].map((m) => monthSummary(data, m).spent)).toEqual([0, 3_334, 3_334, 3_333])
     expect(normalize(data).settings.accounts[1].cycleOverrides).toHaveLength(2)
     expect(normalize(data).transactions[0].installments).toBe(3)
   })
