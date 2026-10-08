@@ -38,10 +38,10 @@ const QuickEntryInner: React.FC<QuickEntryProps> = ({
   const { fps } = useVideoConfig();
 
   // Momentos de la demo, en segundos dentro de la escena.
-  const typeStart = 0.6 * fps;
-  const typeEnd = 1.5 * fps;
-  const pickAt = 1.9 * fps;
-  const saveAt = 2.6 * fps;
+  const typeStart = 0.9 * fps;
+  const typeEnd = 2.3 * fps;
+  const pickAt = 3 * fps;
+  const saveAt = 4 * fps;
 
   // El monto se "escribe" dígito a dígito.
   const digits = String(amount);
@@ -93,7 +93,7 @@ const QuickEntryInner: React.FC<QuickEntryProps> = ({
           display: "flex",
           flexDirection: "column",
           color: colors.text,
-          translate: interpolate(frame, [0, 0.6 * fps], ["0px 300px", "0px 0px"], {
+          translate: interpolate(frame, [0, 0.8 * fps], ["0px 300px", "0px 0px"], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
             easing: Easing.bezier(0.16, 1, 0.3, 1),

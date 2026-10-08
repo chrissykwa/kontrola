@@ -32,7 +32,7 @@ const BalanceInner: React.FC<BalanceProps> = ({
 
   const balance = interpolate(
     frame,
-    [0.9 * fps, 1.8 * fps],
+    [1.4 * fps, 2.8 * fps],
     [balanceBefore, balanceBefore - expense],
     {
       extrapolateLeft: "clamp",
@@ -115,13 +115,13 @@ const BalanceInner: React.FC<BalanceProps> = ({
           display: "flex",
           alignItems: "center",
           gap: 32,
-          opacity: interpolate(frame, [0.5 * fps, 0.8 * fps], [0, 1], {
+          opacity: interpolate(frame, [0.8 * fps, 1.2 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
           translate: interpolate(
             frame,
-            [0.5 * fps, 0.9 * fps],
+            [0.8 * fps, 1.3 * fps],
             ["0px -40px", "0px 0px"],
             {
               extrapolateLeft: "clamp",
@@ -168,7 +168,7 @@ const BalanceInner: React.FC<BalanceProps> = ({
           <span>Presupuesto del mes</span>
           <span style={{ color: colors.brandMid }}>
             {Math.round(
-              interpolate(frame, [1 * fps, 2.2 * fps], [0, budgetUsed], {
+              interpolate(frame, [1.8 * fps, 3.4 * fps], [0, budgetUsed], {
                 extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
               }),
@@ -190,7 +190,7 @@ const BalanceInner: React.FC<BalanceProps> = ({
               height: "100%",
               borderRadius: 18,
               backgroundColor: colors.brandMid,
-              width: `${interpolate(frame, [1 * fps, 2.2 * fps], [0, budgetUsed], {
+              width: `${interpolate(frame, [1.8 * fps, 3.4 * fps], [0, budgetUsed], {
                 extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
                 easing: Easing.bezier(0.16, 1, 0.3, 1),

@@ -72,8 +72,8 @@ const InsightsInner: React.FC<InsightsProps> = ({ title, subtitle, style }) => {
         }}
       >
         {ROWS.map((row, i) => {
-          const start = 0.3 * fps + i * 0.15 * fps;
-          const progress = interpolate(frame, [start, start + 0.9 * fps], [0, 1], {
+          const start = 0.4 * fps + i * 0.3 * fps;
+          const progress = interpolate(frame, [start, start + 1.2 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
             easing: Easing.bezier(0.16, 1, 0.3, 1),

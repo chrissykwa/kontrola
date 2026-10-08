@@ -1,6 +1,8 @@
 import { Composition, Folder } from "remotion";
 import { KontrolaPromo } from "./KontrolaPromo";
+import { Accounts } from "./scenes/Accounts";
 import { Balance } from "./scenes/Balance";
+import { CreditCardScene } from "./scenes/CreditCard";
 import { Cta } from "./scenes/Cta";
 import { Hook } from "./scenes/Hook";
 import { Insights } from "./scenes/Insights";
@@ -13,7 +15,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="KontrolaPromo"
         component={KontrolaPromo}
-        durationInFrames={510}
+        durationInFrames={945}
         fps={30}
         width={1080}
         height={1920}
@@ -22,7 +24,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Pregunta"
           component={Hook}
-          durationInFrames={75}
+          durationInFrames={90}
           fps={30}
           width={1080}
           height={1920}
@@ -35,7 +37,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Logo"
           component={LogoReveal}
-          durationInFrames={60}
+          durationInFrames={90}
           fps={30}
           width={1080}
           height={1920}
@@ -47,7 +49,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="RegistroRapido"
           component={QuickEntry}
-          durationInFrames={120}
+          durationInFrames={165}
           fps={30}
           width={1080}
           height={1920}
@@ -60,7 +62,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Saldo"
           component={Balance}
-          durationInFrames={105}
+          durationInFrames={150}
           fps={30}
           width={1080}
           height={1920}
@@ -72,22 +74,47 @@ export const RemotionRoot: React.FC = () => {
           }}
         />
         <Composition
+          id="Cuentas"
+          component={Accounts}
+          durationInFrames={150}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{
+            title: "Todas tus cuentas\nen un lugar",
+          }}
+        />
+        <Composition
+          id="Tarjetas"
+          component={CreditCardScene}
+          durationInFrames={165}
+          fps={30}
+          width={1080}
+          height={1920}
+          defaultProps={{
+            title: "Tus tarjetas,\nbajo control",
+            dueLabel: "A pagar el 10 nov",
+            footnote:
+              "Cada compra cuenta en el mes en que la pagas, también en cuotas.",
+          }}
+        />
+        <Composition
           id="Analisis"
           component={Insights}
-          durationInFrames={105}
+          durationInFrames={120}
           fps={30}
           width={1080}
           height={1920}
           defaultProps={{
             title: "Mira en qué\nse va tu plata",
             subtitle:
-              "Cuentas, tarjetas de crédito y presupuesto, todo en un lugar.",
+              "Gasto por categoría, comparado con el mes anterior.",
           }}
         />
         <Composition
           id="Cierre"
           component={Cta}
-          durationInFrames={105}
+          durationInFrames={120}
           fps={30}
           width={1080}
           height={1920}

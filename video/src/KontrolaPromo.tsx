@@ -2,7 +2,9 @@ import { linearTiming, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { useVideoConfig } from "remotion";
+import { Accounts } from "./scenes/Accounts";
 import { Balance } from "./scenes/Balance";
+import { CreditCardScene } from "./scenes/CreditCard";
 import { Cta } from "./scenes/Cta";
 import { Hook } from "./scenes/Hook";
 import { Insights } from "./scenes/Insights";
@@ -10,16 +12,16 @@ import { LogoReveal } from "./scenes/LogoReveal";
 import { QuickEntry } from "./scenes/QuickEntry";
 
 /**
- * Promo vertical de Kontrola (~17 s).
- * Escenas: 75 + 60 + 120 + 105 + 105 + 105 = 570 frames,
- * menos 5 transiciones de 12 frames = 510 frames.
+ * Promo vertical de Kontrola (~31 s).
+ * Escenas: 90 + 90 + 165 + 150 + 150 + 165 + 120 + 120 = 1050 frames,
+ * menos 7 transiciones de 15 frames = 945 frames.
  */
 export const KontrolaPromo = () => {
   const { fps } = useVideoConfig();
 
   return (
     <TransitionSeries>
-      <TransitionSeries.Sequence name="Pregunta" durationInFrames={75} premountFor={fps}>
+      <TransitionSeries.Sequence name="Pregunta" durationInFrames={90} premountFor={fps}>
         <Hook
           premountFor={fps}
           line1="¿En qué se"
@@ -29,9 +31,9 @@ export const KontrolaPromo = () => {
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={fade()}
-        timing={linearTiming({ durationInFrames: 12 })}
+        timing={linearTiming({ durationInFrames: 15 })}
       />
-      <TransitionSeries.Sequence name="Logo" durationInFrames={60} premountFor={fps}>
+      <TransitionSeries.Sequence name="Logo" durationInFrames={90} premountFor={fps}>
         <LogoReveal
           premountFor={fps}
           brand="Kontrola"
@@ -40,9 +42,9 @@ export const KontrolaPromo = () => {
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-bottom" })}
-        timing={linearTiming({ durationInFrames: 12 })}
+        timing={linearTiming({ durationInFrames: 15 })}
       />
-      <TransitionSeries.Sequence name="Registro rápido" durationInFrames={120} premountFor={fps}>
+      <TransitionSeries.Sequence name="Registro rápido" durationInFrames={165} premountFor={fps}>
         <QuickEntry
           premountFor={fps}
           title={"Anota un gasto\nen segundos"}
@@ -52,9 +54,9 @@ export const KontrolaPromo = () => {
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-right" })}
-        timing={linearTiming({ durationInFrames: 12 })}
+        timing={linearTiming({ durationInFrames: 15 })}
       />
-      <TransitionSeries.Sequence name="Saldo" durationInFrames={105} premountFor={fps}>
+      <TransitionSeries.Sequence name="Saldo" durationInFrames={150} premountFor={fps}>
         <Balance
           premountFor={fps}
           title={"Siempre sabes\ncuánto te queda"}
@@ -65,20 +67,39 @@ export const KontrolaPromo = () => {
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-right" })}
-        timing={linearTiming({ durationInFrames: 12 })}
+        timing={linearTiming({ durationInFrames: 15 })}
       />
-      <TransitionSeries.Sequence name="Análisis" durationInFrames={105} premountFor={fps}>
+      <TransitionSeries.Sequence name="Cuentas" durationInFrames={150} premountFor={fps}>
+        <Accounts premountFor={fps} title={"Todas tus cuentas\nen un lugar"} />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 15 })}
+      />
+      <TransitionSeries.Sequence name="Tarjetas" durationInFrames={165} premountFor={fps}>
+        <CreditCardScene
+          premountFor={fps}
+          title={"Tus tarjetas,\nbajo control"}
+          dueLabel="A pagar el 10 nov"
+          footnote="Cada compra cuenta en el mes en que la pagas, también en cuotas."
+        />
+      </TransitionSeries.Sequence>
+      <TransitionSeries.Transition
+        presentation={slide({ direction: "from-right" })}
+        timing={linearTiming({ durationInFrames: 15 })}
+      />
+      <TransitionSeries.Sequence name="Análisis" durationInFrames={120} premountFor={fps}>
         <Insights
           premountFor={fps}
           title={"Mira en qué\nse va tu plata"}
-          subtitle="Cuentas, tarjetas de crédito y presupuesto, todo en un lugar."
+          subtitle="Gasto por categoría, comparado con el mes anterior."
         />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={fade()}
-        timing={linearTiming({ durationInFrames: 12 })}
+        timing={linearTiming({ durationInFrames: 15 })}
       />
-      <TransitionSeries.Sequence name="Cierre" durationInFrames={105} premountFor={fps}>
+      <TransitionSeries.Sequence name="Cierre" durationInFrames={120} premountFor={fps}>
         <Cta
           premountFor={fps}
           headline={"Toma el control\nde tu plata"}

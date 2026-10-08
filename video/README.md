@@ -1,6 +1,6 @@
 # Video promocional de Kontrola
 
-Proyecto [Remotion](https://www.remotion.dev): promo vertical (1080×1920, 30 fps, 17 s) con los colores, la tipografía (Geist) y el logo de la app.
+Proyecto [Remotion](https://www.remotion.dev): promo vertical (1080×1920, 30 fps, ~31 s) con los colores, la tipografía (Geist) y el logo de la app.
 
 ```bash
 npm install
@@ -16,6 +16,8 @@ npx remotion render KontrolaPromo out/kontrola-promo.mp4
 | Logo | `src/scenes/LogoReveal.tsx` | Logo, nombre y bajada |
 | Registro rápido | `src/scenes/QuickEntry.tsx` | Se anota un gasto de $6.500 en un teléfono |
 | Saldo | `src/scenes/Balance.tsx` | El saldo baja de $290.000 a $283.500 y avanza el presupuesto |
+| Cuentas | `src/scenes/Accounts.tsx` | Varias cuentas y una tarjeta, cada una con su saldo |
+| Tarjetas | `src/scenes/CreditCard.tsx` | Corte, vencimiento y compras del ciclo (con cuotas) |
 | Análisis | `src/scenes/Insights.tsx` | Gasto del mes por categoría |
 | Cierre | `src/scenes/Cta.tsx` | Logo y llamada a la acción |
 

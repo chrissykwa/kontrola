@@ -23,13 +23,13 @@ const HookInner: React.FC<HookProps> = ({ line1, line2, highlight, style }) => {
   const { fps } = useVideoConfig();
 
   const appear = (start: number) => ({
-    opacity: interpolate(frame, [start, start + 0.4 * fps], [0, 1], {
+    opacity: interpolate(frame, [start, start + 0.5 * fps], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     }),
     translate: interpolate(
       frame,
-      [start, start + 0.6 * fps],
+      [start, start + 0.8 * fps],
       ["0px 60px", "0px 0px"],
       {
         extrapolateLeft: "clamp",
@@ -58,9 +58,9 @@ const HookInner: React.FC<HookProps> = ({ line1, line2, highlight, style }) => {
           letterSpacing: -3,
         }}
       >
-        <div style={appear(0.1 * fps)}>{line1}</div>
-        <div style={appear(0.45 * fps)}>{line2}</div>
-        <div style={{ ...appear(0.8 * fps), color: colors.brandGreen }}>
+        <div style={appear(0.2 * fps)}>{line1}</div>
+        <div style={appear(0.8 * fps)}>{line2}</div>
+        <div style={{ ...appear(1.4 * fps), color: colors.brandGreen }}>
           {highlight}
         </div>
       </div>
