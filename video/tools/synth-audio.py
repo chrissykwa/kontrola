@@ -79,6 +79,9 @@ save("impact", impact())
 save("riser", riser())
 
 # ---------------- Música ----------------
+# Mezcla pensada para parlantes de celular: casi nada bajo 150 Hz se oye ahí, así que
+# el peso está en medios y agudos (melodía, arpegio, pad brillante, hi-hats, palmas)
+# y el bajo y el bombo llevan armónicos que sí suenan en un teléfono.
 
 BPM = 120
 BEAT = 60 / BPM
@@ -100,35 +103,44 @@ def add(buf, start_s, sig, gain=1.0):
     buf[i:j] += sig[: j - i] * gain
 
 
-def tone(freq, dur, harmonics, decay=None, detune=0.0):
+def tone(freq, dur, harmonics, decay=None, detune=0.0, vibrato=0.0):
     n = int(dur * SR)
     t = np.arange(n) / SR
+    phase = 2 * np.pi * freq * (1 + detune) * (t + vibrato * np.sin(2 * np.pi * 5.5 * t) / (2 * np.pi * 5.5))
     y = np.zeros(n)
     for k, a in harmonics:
-        y += a * np.sin(2 * np.pi * freq * k * (1 + detune) * t)
+        if freq * k < 16000:
+            y += a * np.sin(phase * k)
     if decay is not None:
         y *= np.exp(-t * decay)
-    # ataque y salida suaves para evitar clics
     a = min(n, int(0.004 * SR))
     y[:a] *= np.linspace(0, 1, a)
     y[-a:] *= np.linspace(1, 0, a)
     return y
 
 
-SAW = [(k, 1 / k * np.exp(-k / 5)) for k in range(1, 14)]
-SOFT = [(1, 1.0), (2, 0.35), (3, 0.12)]
+SAW = [(k, 1 / k) for k in range(1, 24)]
+SQUARE = [(k, 1 / k) for k in range(1, 24, 2)]
+PLUCK = [(1, 1.0), (2, 0.5), (3, 0.35), (4, 0.2), (5, 0.12), (6, 0.08)]
 
-# Progresión I–V–vi–IV en Fa mayor, un compás (4 tiempos) por acorde.
+# Progresión I–V–vi–IV en Fa mayor, un compás por acorde.
 CHORDS = [
     (53, [65, 69, 72]),  # F
     (48, [64, 67, 72]),  # C
     (50, [65, 69, 74]),  # Dm
     (46, [65, 70, 74]),  # Bb
 ]
+# Melodía en corcheas (None = silencio), un compás por acorde.
+MELODY = [
+    [77, None, 76, 77, None, 72, None, 74],
+    [76, None, 74, 72, None, 67, None, 72],
+    [74, None, 72, 74, None, 77, None, 81],
+    [79, None, 77, 74, None, 72, 74, None],
+]
 BAR = 4 * BEAT
 
-# Secciones (segundos): intro suave, groove, cierre.
-GROOVE_START = 2.5  # entra el bombo con el logo
+GROOVE_START = 2.5  # entra el ritmo con el logo
+MELODY_START = 4.4  # entra la melodía con el registro rápido
 OUTRO_START = 26.0  # escena de cierre
 END = 901 / 30
 
@@ -137,84 +149,97 @@ t0 = 0.0
 bar = 0
 while t0 < END + 0.5:
     root, triad = CHORDS[bar % 4]
-    # Pad: tríada con armónicos suaves y leve desafinación entre canales.
+    # Pad brillante, una octava arriba, con leve desafinación entre canales.
     for m in triad:
-        pad = tone(note_hz(m), BAR + 0.3, SAW)
-        env = np.minimum(1, np.arange(len(pad)) / (0.25 * SR))
-        add(L, t0, pad * env, 0.06)
-        add(R, t0, tone(note_hz(m), BAR + 0.3, SAW, detune=0.003) * env, 0.06)
+        env_len = int((BAR + 0.3) * SR)
+        env = np.minimum(1, np.arange(env_len) / (0.2 * SR))
+        add(L, t0, tone(note_hz(m + 12), BAR + 0.3, SAW) * env, 0.045)
+        add(R, t0, tone(note_hz(m + 12), BAR + 0.3, SAW, detune=0.004) * env, 0.045)
     for b in range(4):
         tb = t0 + b * BEAT
         if tb >= END + 0.3:
             break
         in_groove = GROOVE_START - 0.01 <= tb < OUTRO_START
-        if in_groove or (tb >= OUTRO_START and tb < OUTRO_START + 2 * BEAT):
+        if in_groove or (OUTRO_START <= tb < OUTRO_START + 2 * BEAT):
             kick_times.append(tb)
         if in_groove:
-            # Bajo en corcheas, con la raíz y su octava.
+            # Bajo en corcheas, una octava más arriba que antes y con armónicos de sierra.
             for e in range(2):
-                m = root - 12 + (12 if e == 1 and b % 2 == 1 else 0)
-                bass = tone(note_hz(m), BEAT / 2 * 0.9, SAW[:8], decay=4)
-                add(L, tb + e * BEAT / 2, bass, 0.32)
-                add(R, tb + e * BEAT / 2, bass, 0.32)
-        # Arpegio en semicorcheas (más suave en la intro y el cierre).
-        arp_gain = 0.11 if in_groove else 0.07
-        pattern = [0, 1, 2, 1]
-        for s in range(4):
-            m = triad[pattern[s]] + 12
-            pl = tone(note_hz(m), 0.35, SOFT, decay=14)
-            pan = 0.6 + 0.4 * (s % 2)
-            add(L, tb + s * BEAT / 4, pl, arp_gain * pan)
-            add(R, tb + s * BEAT / 4, pl, arp_gain * (1.6 - pan))
+                m = root + (12 if e == 1 and b % 2 == 1 else 0)
+                bass = tone(note_hz(m), BEAT / 2 * 0.85, SAW[:12], decay=5)
+                add(L, tb + e * BEAT / 2, bass, 0.10)
+                add(R, tb + e * BEAT / 2, bass, 0.10)
+        # Arpegio en semicorcheas, dos octavas arriba.
+        arp_gain = 0.10 if in_groove else 0.08
+        for s16 in range(4):
+            m = triad[[0, 1, 2, 1][s16]] + 12
+            pl = tone(note_hz(m), 0.3, PLUCK, decay=12)
+            pan = 0.55 + 0.45 * (s16 % 2)
+            add(L, tb + s16 * BEAT / 4, pl, arp_gain * pan)
+            add(R, tb + s16 * BEAT / 4, pl, arp_gain * (1.55 - pan))
+        # Melodía principal.
+        if MELODY_START - 0.01 <= tb < OUTRO_START + 4 * BEAT:
+            for e in range(2):
+                m = MELODY[bar % 4][b * 2 + e]
+                if m is None:
+                    continue
+                ld = tone(note_hz(m), BEAT * 0.9, SQUARE, decay=3.5, vibrato=0.004)
+                add(L, tb + e * BEAT / 2, ld, 0.075)
+                add(R, tb + e * BEAT / 2, ld, 0.075)
     t0 += BAR
     bar += 1
 
-# Batería
-for tk in kick_times:
-    n = int(0.45 * SR)
-    t = np.arange(n) / SR
-    k = np.sin(2 * np.pi * np.cumsum(48 + 110 * np.exp(-t * 28)) / SR) * np.exp(-t * 7)
-    add(L, tk, np.tanh(k * 1.5), 0.55)
-    add(R, tk, np.tanh(k * 1.5), 0.55)
 
-def hp_noise(n, smooth=8):
+def hp_noise(n, smooth=2):
     x = rng.standard_normal(n + smooth)
     c = np.cumsum(x)
     lp = (c[smooth:] - c[:-smooth]) / smooth
     return x[smooth:] - lp
 
+
+# Bombo: cuerpo grave + "click" de ataque que se oye en parlantes chicos.
+for tk in kick_times:
+    n = int(0.4 * SR)
+    t = np.arange(n) / SR
+    body = np.sin(2 * np.pi * np.cumsum(60 + 140 * np.exp(-t * 30)) / SR) * np.exp(-t * 9)
+    click = hp_noise(n, 3) * np.exp(-t * 180) * 0.6
+    k = np.tanh((body + click) * 2.2)
+    add(L, tk, k, 0.24)
+    add(R, tk, k, 0.24)
+
 t = GROOVE_START
 beat_i = 0
 while t < OUTRO_START:
-    # Hi-hat en contratiempo
-    n = int(0.06 * SR)
-    hh = hp_noise(n, 4) * np.exp(-np.arange(n) / SR * 70)
-    add(L, t + BEAT / 2, hh, 0.07)
-    add(R, t + BEAT / 2, hh, 0.09)
-    # Palmas en 2 y 4
+    # Hi-hats en corcheas (el contratiempo más fuerte).
+    for e in range(2):
+        n = int(0.05 * SR)
+        hh = hp_noise(n, 2) * np.exp(-np.arange(n) / SR * 80)
+        g = 0.09 if e == 1 else 0.045
+        add(L, t + e * BEAT / 2, hh, g * 0.9)
+        add(R, t + e * BEAT / 2, hh, g * 1.1)
+    # Palmas en 2 y 4.
     if beat_i % 2 == 1:
-        n = int(0.2 * SR)
-        cl = hp_noise(n, 20) * np.exp(-np.arange(n) / SR * 22)
-        add(L, t, cl, 0.16)
-        add(R, t, cl, 0.16)
+        n = int(0.18 * SR)
+        cl = hp_noise(n, 6) * np.exp(-np.arange(n) / SR * 20)
+        add(L, t, cl, 0.13)
+        add(R, t, cl, 0.13)
     t += BEAT
     beat_i += 1
 
-# "Sidechain": baja el volumen del resto en cada bombo para que respire.
+# "Sidechain": baja el resto en cada bombo para que respire.
 duck = np.ones(N)
 for tk in kick_times:
     i = int(tk * SR)
-    n = int(0.25 * SR)
-    curve = 1 - 0.45 * np.exp(-np.arange(n) / SR * 14)
+    n = int(0.22 * SR)
+    curve = 1 - 0.35 * np.exp(-np.arange(n) / SR * 14)
     j = min(N, i + n)
     duck[i:j] = np.minimum(duck[i:j], curve[: j - i])
 L *= duck
 R *= duck
 
-# Fundido de entrada y salida.
 t = np.arange(N) / SR
 fade = np.clip(t / 0.8, 0, 1) * np.clip((END + 1.2 - t) / 2.0, 0, 1)
 mix = np.stack([L * fade, R * fade], axis=1)
-mix = np.tanh(mix / np.max(np.abs(mix)) * 1.3)
+mix = np.tanh(mix / np.max(np.abs(mix)) * 1.2)
 save("kontrola-beat", mix)
 print("ok", DUR)

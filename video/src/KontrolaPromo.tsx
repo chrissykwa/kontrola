@@ -167,7 +167,7 @@ export const KontrolaPromo = ({ music }: { music: boolean }) => {
         <Audio
           name="Música"
           src={staticFile("audio/kontrola-beat.mp3")}
-          volume={0.4}
+          volume={0.6}
         />
       ) : null}
     </>
