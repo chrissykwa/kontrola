@@ -13,6 +13,7 @@ import {
 import { Backdrop } from "../components/Backdrop";
 import { Burst } from "../components/Effects";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily, formatCLP } from "../theme";
 
 type AccountsProps = {
@@ -145,6 +146,12 @@ const AccountsInner: React.FC<AccountsProps> = ({ title, style }) => {
           <Burst x={700} y={70} at={totalAt + 0.8} distance={300} colors={[colors.brandGreen, "white", "#eab308"]} />
         </div>
       </AbsoluteFill>
+      {/* Sonido: cada cuenta cae como una carta; el total suena a monedas */}
+      {ACCOUNTS.map((a, i) => (
+        <Sfx key={a.name} name="card-place-1" at={firstAt + i * gap} volume={0.45} />
+      ))}
+      <Sfx name="pluck_002" at={totalAt} volume={0.4} />
+      <Sfx name="chips-stack-2" at={totalAt + 0.8} volume={0.6} />
     </AbsoluteFill>
   );
 };

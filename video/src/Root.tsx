@@ -19,6 +19,16 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1080}
         height={1920}
+        defaultProps={{ music: true }}
+      />
+      <Composition
+        id="KontrolaPromoSinMusica"
+        component={KontrolaPromo}
+        durationInFrames={901}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{ music: false }}
       />
       <Folder name="Escenas">
         <Composition

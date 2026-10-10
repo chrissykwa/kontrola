@@ -21,6 +21,7 @@ import {
 } from "remotion";
 import { Backdrop } from "../components/Backdrop";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { fontFamily } from "../theme";
 
 type HookProps = {
@@ -116,6 +117,11 @@ const HookInner: React.FC<HookProps> = ({ question, highlight, style }) => {
           />
         </div>
       </AbsoluteFill>
+      {/* Sonido */}
+      <Sfx name="pluck_001" at={0.1} volume={0.5} />
+      <Sfx name="pluck_001" at={0.46} volume={0.5} />
+      <Sfx name="glass_002" at={0.82} volume={0.6} />
+      <Sfx name="whoosh-2" at={2.15} volume={0.35} />
     </AbsoluteFill>
   );
 };

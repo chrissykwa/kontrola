@@ -13,6 +13,7 @@ import {
 import { Backdrop } from "../components/Backdrop";
 import { Burst, Shine } from "../components/Effects";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily, formatCLP } from "../theme";
 
 type CreditCardProps = {
@@ -218,6 +219,15 @@ const CreditCardInner: React.FC<CreditCardProps> = ({ title, dueLabel, footnote,
           {footnote}
         </div>
       </AbsoluteFill>
+      {/* Sonido: la tarjeta gira, las fechas aparecen, las compras y el total */}
+      <Sfx name="card-slide-1" at={0.2} volume={0.55} />
+      <Sfx name="glass_002" at={1.4} volume={0.4} />
+      <Sfx name="pluck_001" at={1.1} volume={0.4} />
+      <Sfx name="pluck_001" at={1.22} volume={0.4} />
+      {PURCHASES.map((p, i) => (
+        <Sfx key={p.name} name="tick_001" at={listStart + i * 0.22} volume={0.35} />
+      ))}
+      <Sfx name="chips-stack-2" at={totalAt + 0.7} volume={0.6} />
     </AbsoluteFill>
   );
 };

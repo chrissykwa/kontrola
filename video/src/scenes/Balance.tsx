@@ -13,6 +13,7 @@ import {
 import { Backdrop } from "../components/Backdrop";
 import { Shine } from "../components/Effects";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily, formatCLP } from "../theme";
 
 type BalanceProps = {
@@ -182,6 +183,12 @@ const BalanceInner: React.FC<BalanceProps> = ({ title, balanceBefore, expense, b
           </div>
         </div>
       </AbsoluteFill>
+      {/* Sonido: el gasto choca con el saldo */}
+      <Sfx name="chips-collide-1" at={hitAt} volume={0.6} />
+      <Sfx name="drop_002" at={hitAt} volume={0.5} />
+      <Sfx name="card-slide-1" at={1.6} volume={0.35} />
+      <Sfx name="pluck_002" at={2} volume={0.4} />
+      <Sfx name="glass_002" at={countEnd} volume={0.45} />
     </AbsoluteFill>
   );
 };

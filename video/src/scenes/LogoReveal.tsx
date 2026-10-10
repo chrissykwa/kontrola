@@ -11,6 +11,7 @@ import {
   type InteractivitySchema,
 } from "remotion";
 import { Backdrop } from "../components/Backdrop";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily } from "../theme";
 
 type LogoRevealProps = {
@@ -99,6 +100,11 @@ const LogoRevealInner: React.FC<LogoRevealProps> = ({ brand, tagline, style }) =
           {tagline}
         </div>
       </AbsoluteFill>
+      {/* Sonido: aparece el logo y cada letra hace "tic" */}
+      <Sfx name="maximize_003" at={0.05} volume={0.6} />
+      {brand.split("").map((_, i) => (
+        <Sfx key={i} name="tick_001" at={0.4 + (i * 2) / fps} volume={0.3} />
+      ))}
     </AbsoluteFill>
   );
 };

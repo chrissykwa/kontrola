@@ -13,6 +13,7 @@ import {
 import { Backdrop } from "../components/Backdrop";
 import { Burst, TapRipple } from "../components/Effects";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily, formatCLP } from "../theme";
 
 type QuickEntryProps = {
@@ -232,6 +233,19 @@ const QuickEntryInner: React.FC<QuickEntryProps> = ({ title, amount, detail, sty
           −{formatCLP(amount)}
         </div>
       </div>
+      {/* Sonido: teclas al escribir el monto, toque en la categoría y confirmación */}
+      {digits.split("").map((_, k) => (
+        <Sfx
+          key={k}
+          name="tick_001"
+          at={typeStart + ((k + 0.5) * (typeEnd - typeStart)) / digits.length}
+          volume={0.45}
+        />
+      ))}
+      <Sfx name="click_002" at={pickAt} volume={0.6} />
+      <Sfx name="select_003" at={pickAt} volume={0.45} />
+      <Sfx name="confirmation_002" at={saveAt} volume={0.6} />
+      <Sfx name="whoosh-2" at={saveAt + 0.15} volume={0.25} />
     </AbsoluteFill>
   );
 };

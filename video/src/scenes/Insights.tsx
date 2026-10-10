@@ -11,6 +11,7 @@ import {
 } from "remotion";
 import { Backdrop } from "../components/Backdrop";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily, formatCLP } from "../theme";
 
 type InsightsProps = {
@@ -118,6 +119,11 @@ const InsightsInner: React.FC<InsightsProps> = ({ title, subtitle, badge, style 
           {badge}
         </div>
       </AbsoluteFill>
+      {/* Sonido: cada barra y la insignia */}
+      {ROWS.map((row, i) => (
+        <Sfx key={row.name} name="pluck_002" at={0.5 + i * 0.18} volume={0.3} />
+      ))}
+      <Sfx name="maximize_003" at={badgeAt} volume={0.6} />
     </AbsoluteFill>
   );
 };

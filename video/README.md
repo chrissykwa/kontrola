@@ -5,7 +5,8 @@ Proyecto [Remotion](https://www.remotion.dev): promo vertical (1080×1920, 30 fp
 ```bash
 npm install
 npm run dev      # abre Remotion Studio para previsualizar y editar
-npx remotion render KontrolaPromo out/kontrola-promo.mp4
+npx remotion render KontrolaPromo out/kontrola-promo.mp4            # con música
+npx remotion render KontrolaPromoSinMusica out/kontrola-promo.mp4    # solo efectos
 ```
 
 ## Escenas
@@ -24,3 +25,15 @@ npx remotion render KontrolaPromo out/kontrola-promo.mp4
 La secuencia completa está en `src/KontrolaPromo.tsx`, con una transición distinta entre cada escena: zoom con desenfoque, barrido de color, paneo rápido, iris y corte con destello (las propias están en `src/transitions.tsx`). Las piezas compartidas están en `src/components/`: fondo animado (`Backdrop`), títulos palabra por palabra (`KineticTitle`) y efectos de toque, partículas y brillo (`Effects`). Cada escena también se registra sola en `src/Root.tsx` (carpeta *Escenas* en Studio). Los textos y montos se pueden editar desde Studio.
 
 Los colores vienen de `src/styles/app.css` de la app (copiados en `src/theme.ts`).
+
+## Audio
+
+- **Efectos en los cortes:** whooshes sincronizados con el centro de cada transición, en `src/KontrolaPromo.tsx`.
+- **Efectos dentro de las escenas:** teclas, toques, confirmación y monedas, atados a las animaciones de cada escena (componente `Sfx` en `src/components/Sfx.tsx`).
+- **Música:** `public/audio/kontrola-beat.mp3`, sintetizada para este video (120 BPM; el bombo entra con el logo). La composición `KontrolaPromoSinMusica` es la misma pero sin música.
+
+Origen y licencias de cada sonido: `public/audio/CREDITOS.md`. Para publicar en redes conviene normalizar el volumen a −14 LUFS, por ejemplo:
+
+```bash
+ffmpeg -i out/kontrola-promo.mp4 -c:v copy -af "loudnorm=I=-14:TP=-2:LRA=11,alimiter=limit=0.7:level=false" -c:a aac -b:a 192k out/kontrola-promo-redes.mp4
+```

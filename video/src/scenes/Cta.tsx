@@ -13,6 +13,7 @@ import {
 import { Backdrop } from "../components/Backdrop";
 import { Burst, Shine } from "../components/Effects";
 import { KineticTitle } from "../components/KineticTitle";
+import { Sfx } from "../components/Sfx";
 import { colors, fontFamily } from "../theme";
 
 type CtaProps = {
@@ -93,6 +94,10 @@ const CtaInner: React.FC<CtaProps> = ({ headline, button, style }) => {
           <Shine at={2.1} duration={0.7} opacity={0.8} />
         </div>
       </AbsoluteFill>
+      {/* Sonido: golpe al llegar el logo, botón y brillo */}
+      <Sfx name="impact" at={0.35} volume={0.55} />
+      <Sfx name="pluck_002" at={1.2} volume={0.45} />
+      <Sfx name="glass_002" at={2.1} volume={0.5} />
     </AbsoluteFill>
   );
 };
