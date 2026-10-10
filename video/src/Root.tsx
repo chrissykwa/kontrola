@@ -15,7 +15,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="KontrolaPromo"
         component={KontrolaPromo}
-        durationInFrames={945}
+        durationInFrames={901}
         fps={30}
         width={1080}
         height={1920}
@@ -29,15 +29,14 @@ export const RemotionRoot: React.FC = () => {
           width={1080}
           height={1920}
           defaultProps={{
-            line1: "¿En qué se",
-            line2: "fue tu plata",
+            question: "¿En qué se\nfue tu plata",
             highlight: "este mes?",
           }}
         />
         <Composition
           id="Logo"
           component={LogoReveal}
-          durationInFrames={90}
+          durationInFrames={80}
           fps={30}
           width={1080}
           height={1920}
@@ -62,7 +61,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Saldo"
           component={Balance}
-          durationInFrames={150}
+          durationInFrames={140}
           fps={30}
           width={1080}
           height={1920}
@@ -76,7 +75,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="Cuentas"
           component={Accounts}
-          durationInFrames={150}
+          durationInFrames={140}
           fps={30}
           width={1080}
           height={1920}
@@ -109,6 +108,7 @@ export const RemotionRoot: React.FC = () => {
             title: "Mira en qué\nse va tu plata",
             subtitle:
               "Gasto por categoría, comparado con el mes anterior.",
+            badge: "12% menos que septiembre",
           }}
         />
         <Composition

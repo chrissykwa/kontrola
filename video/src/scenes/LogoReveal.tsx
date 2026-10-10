@@ -1,15 +1,16 @@
 import type React from "react";
 import {
   AbsoluteFill,
-  Easing,
   Img,
   Interactive,
   interpolate,
+  spring,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
   type InteractivitySchema,
 } from "remotion";
+import { Backdrop } from "../components/Backdrop";
 import { colors, fontFamily } from "../theme";
 
 type LogoRevealProps = {
@@ -18,81 +19,86 @@ type LogoRevealProps = {
   readonly style?: React.CSSProperties;
 };
 
-/** Escena 2: aparece el logo y el nombre. */
-const LogoRevealInner: React.FC<LogoRevealProps> = ({
-  brand,
-  tagline,
-  style,
-}) => {
+const RINGS = [colors.brand, colors.brandMid, colors.brandGreen];
+
+/** Escena 2: anillos que se expanden, el logo entra girando y el nombre letra a letra. */
+const LogoRevealInner: React.FC<LogoRevealProps> = ({ brand, tagline, style }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const logo = spring({ frame, fps, config: { damping: 9, stiffness: 120 } });
 
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: colors.bg,
-        justifyContent: "center",
-        alignItems: "center",
-        fontFamily,
-        color: colors.text,
-        ...style,
-      }}
-    >
-      <Img
-        src={staticFile("logo-mark.webp")}
-        style={{
-          width: 340,
-          height: 340,
-          scale: interpolate(frame, [0, 0.8 * fps], [0.4, 1], {
+    <AbsoluteFill style={{ fontFamily, color: colors.text, ...style }}>
+      <Backdrop variant="light" />
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+        {RINGS.map((color, i) => {
+          const start = 0.15 * fps + i * 0.12 * fps;
+          const p = interpolate(frame, [start, start + 1.1 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
-            easing: Easing.spring({ damping: 12 }),
-            output: "perceptual-scale",
-          }),
-          opacity: interpolate(frame, [0, 0.25 * fps], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-        }}
-      />
-      <div
-        style={{
-          marginTop: 48,
-          fontSize: 150,
-          fontWeight: 800,
-          letterSpacing: -5,
-          opacity: interpolate(frame, [0.35 * fps, 0.7 * fps], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-          translate: interpolate(
-            frame,
-            [0.35 * fps, 0.9 * fps],
-            ["0px 40px", "0px 0px"],
-            {
+          });
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                width: 400,
+                height: 400,
+                marginTop: -260,
+                borderRadius: "50%",
+                border: `${16 - i * 4}px solid ${color}`,
+                scale: String(0.4 + p * 2.6),
+                opacity: p === 0 ? 0 : 1 - p,
+              }}
+            />
+          );
+        })}
+        <Img
+          src={staticFile("logo-mark.webp")}
+          style={{
+            width: 340,
+            height: 340,
+            scale: String(logo),
+            rotate: `${(1 - logo) * -90}deg`,
+          }}
+        />
+        <div style={{ marginTop: 48, display: "flex", fontSize: 150, fontWeight: 800, letterSpacing: -5 }}>
+          {brand.split("").map((ch, i) => {
+            const s = spring({ frame: frame - (0.4 * fps + i * 2), fps, config: { damping: 10 } });
+            return (
+              <span
+                key={i}
+                style={{
+                  display: "inline-block",
+                  opacity: s > 0 ? 1 : 0,
+                  translate: `0px ${(1 - s) * 120}px`,
+                  scale: String(0.5 + s * 0.5),
+                }}
+              >
+                {ch}
+              </span>
+            );
+          })}
+        </div>
+        <div
+          style={{
+            marginTop: 16,
+            fontSize: 52,
+            fontWeight: 500,
+            color: colors.muted,
+            opacity: interpolate(frame, [0.9 * fps, 1.3 * fps], [0, 1], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
-              easing: Easing.bezier(0.16, 1, 0.3, 1),
-            },
-          ),
-        }}
-      >
-        {brand}
-      </div>
-      <div
-        style={{
-          marginTop: 16,
-          fontSize: 52,
-          fontWeight: 500,
-          color: colors.muted,
-          opacity: interpolate(frame, [0.6 * fps, 1 * fps], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-        }}
-      >
-        {tagline}
-      </div>
+            }),
+            letterSpacing: interpolate(frame, [0.9 * fps, 1.6 * fps], [14, 0], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            }),
+          }}
+        >
+          {tagline}
+        </div>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };

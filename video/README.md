@@ -1,6 +1,6 @@
 # Video promocional de Kontrola
 
-Proyecto [Remotion](https://www.remotion.dev): promo vertical (1080×1920, 30 fps, ~31 s) con los colores, la tipografía (Geist) y el logo de la app.
+Proyecto [Remotion](https://www.remotion.dev): promo vertical (1080×1920, 30 fps, ~30 s) con los colores, la tipografía (Geist) y el logo de la app.
 
 ```bash
 npm install
@@ -21,6 +21,6 @@ npx remotion render KontrolaPromo out/kontrola-promo.mp4
 | Análisis | `src/scenes/Insights.tsx` | Gasto del mes por categoría |
 | Cierre | `src/scenes/Cta.tsx` | Logo y llamada a la acción |
 
-La secuencia completa está en `src/KontrolaPromo.tsx`. Cada escena también se registra sola en `src/Root.tsx` (carpeta *Escenas* en Studio). Los textos y montos se pueden editar desde Studio.
+La secuencia completa está en `src/KontrolaPromo.tsx`, con una transición distinta entre cada escena: zoom con desenfoque, barrido de color, paneo rápido, iris y corte con destello (las propias están en `src/transitions.tsx`). Las piezas compartidas están en `src/components/`: fondo animado (`Backdrop`), títulos palabra por palabra (`KineticTitle`) y efectos de toque, partículas y brillo (`Effects`). Cada escena también se registra sola en `src/Root.tsx` (carpeta *Escenas* en Studio). Los textos y montos se pueden editar desde Studio.
 
 Los colores vienen de `src/styles/app.css` de la app (copiados en `src/theme.ts`).

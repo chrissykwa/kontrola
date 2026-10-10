@@ -5,10 +5,14 @@ import {
   Easing,
   Interactive,
   interpolate,
+  spring,
   useCurrentFrame,
   useVideoConfig,
   type InteractivitySchema,
 } from "remotion";
+import { Backdrop } from "../components/Backdrop";
+import { Burst } from "../components/Effects";
+import { KineticTitle } from "../components/KineticTitle";
 import { colors, fontFamily, formatCLP } from "../theme";
 
 type AccountsProps = {
@@ -25,130 +29,122 @@ const ACCOUNTS = [
 ];
 const TOTAL = ACCOUNTS.filter((a) => a.value > 0).reduce((s, a) => s + a.value, 0);
 
+const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
+
 /** Escena: varias cuentas y tarjetas, cada una con su saldo. */
 const AccountsInner: React.FC<AccountsProps> = ({ title, style }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const totalStart = 0.5 * fps + ACCOUNTS.length * 0.45 * fps;
+  const firstAt = 0.6;
+  const gap = 0.32;
+  const totalAt = firstAt + ACCOUNTS.length * gap + 0.3;
+  const totalPop = spring({ frame: frame - totalAt * fps, fps, config: { damping: 8 } });
 
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: colors.darkBg,
-        padding: "190px 100px",
-        fontFamily,
-        color: "white",
-        ...style,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 96,
-          fontWeight: 800,
-          lineHeight: 1.05,
-          letterSpacing: -3,
-          whiteSpace: "pre-line",
-        }}
-      >
-        {title}
-      </div>
+    <AbsoluteFill style={{ fontFamily, color: "white", ...style }}>
+      <Backdrop variant="dark" />
+      <AbsoluteFill style={{ padding: "190px 100px" }}>
+        <KineticTitle text={title} accentWords={["todas", "cuentas"]} />
 
-      <div style={{ marginTop: 90, display: "flex", flexDirection: "column", gap: 28 }}>
-        {ACCOUNTS.map(({ name, note, value, color, Icon }, i) => {
-          const start = 0.5 * fps + i * 0.45 * fps;
-          return (
-            <div
-              key={name}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 32,
-                padding: "40px 44px",
-                borderRadius: 44,
-                backgroundColor: colors.darkSurface2,
-                opacity: interpolate(frame, [start, start + 0.35 * fps], [0, 1], {
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                }),
-                translate: interpolate(
-                  frame,
-                  [start, start + 0.6 * fps],
-                  ["120px 0px", "0px 0px"],
-                  {
-                    extrapolateLeft: "clamp",
-                    extrapolateRight: "clamp",
-                    easing: Easing.bezier(0.16, 1, 0.3, 1),
-                  },
-                ),
-              }}
-            >
+        <div style={{ marginTop: 90, display: "flex", flexDirection: "column", gap: 28 }}>
+          {ACCOUNTS.map(({ name, note, value, color, Icon }, i) => {
+            const start = (firstAt + i * gap) * fps;
+            const s = spring({ frame: frame - start, fps, config: { damping: 12, stiffness: 140 } });
+            const fromLeft = i % 2 === 0;
+            const icon = spring({ frame: frame - start - 6, fps, config: { damping: 8 } });
+            return (
               <div
+                key={name}
                 style={{
-                  width: 100,
-                  height: 100,
-                  borderRadius: 30,
-                  backgroundColor: color,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  gap: 32,
+                  padding: "40px 44px",
+                  borderRadius: 44,
+                  backgroundColor: "rgba(26,42,45,0.85)",
+                  border: "2px solid rgba(255,255,255,0.06)",
+                  opacity: s > 0.01 ? 1 : 0,
+                  translate: `${(1 - s) * (fromLeft ? -1100 : 1100)}px 0px`,
+                  rotate: `${(1 - s) * (fromLeft ? -8 : 8)}deg`,
                 }}
               >
-                <Icon size={54} color="white" strokeWidth={2.2} />
+                <div
+                  style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: 30,
+                    backgroundColor: color,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    scale: String(icon),
+                    rotate: `${(1 - icon) * 180}deg`,
+                  }}
+                >
+                  <Icon size={54} color="white" strokeWidth={2.2} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 46, fontWeight: 600 }}>{name}</div>
+                  <div style={{ fontSize: 36, color: "#9fb3b1" }}>{note}</div>
+                </div>
+                <div
+                  style={{
+                    fontSize: 50,
+                    fontWeight: 700,
+                    fontVariantNumeric: "tabular-nums",
+                    color: value < 0 ? "#ff8a73" : "white",
+                  }}
+                >
+                  {value < 0 ? "−" : ""}
+                  {formatCLP(
+                    interpolate(frame, [start + 4, start + 0.8 * fps], [0, value], {
+                      ...clamp,
+                      easing: Easing.out(Easing.cubic),
+                    }),
+                  )}
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 46, fontWeight: 600 }}>{name}</div>
-                <div style={{ fontSize: 36, color: "#9fb3b1" }}>{note}</div>
-              </div>
-              <div
-                style={{
-                  fontSize: 50,
-                  fontWeight: 700,
-                  fontVariantNumeric: "tabular-nums",
-                  color: value < 0 ? "#ff8a73" : "white",
-                }}
-              >
-                {value < 0 ? "−" : ""}
-                {formatCLP(value)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <div
-        style={{
-          marginTop: 56,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          padding: "0 8px",
-          opacity: interpolate(frame, [totalStart, totalStart + 0.4 * fps], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }),
-        }}
-      >
-        <span style={{ fontSize: 46, color: "#9fb3b1" }}>Total en cuentas</span>
-        <span
+        <div
           style={{
-            fontSize: 80,
-            fontWeight: 800,
-            letterSpacing: -2,
-            color: colors.brandGreen,
-            fontVariantNumeric: "tabular-nums",
+            position: "relative",
+            marginTop: 56,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "36px 44px",
+            borderRadius: 44,
+            backgroundColor: "rgba(76,216,152,0.12)",
+            border: `3px solid ${colors.brandGreen}`,
+            opacity: totalPop > 0.01 ? 1 : 0,
+            scale: String(0.7 + totalPop * 0.3),
           }}
         >
-          {formatCLP(
-            interpolate(frame, [totalStart, totalStart + 1 * fps], [0, TOTAL], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-              easing: Easing.bezier(0.33, 1, 0.68, 1),
-            }),
-          )}
-        </span>
-      </div>
+          <span style={{ fontSize: 46, color: "#cfe9df", fontWeight: 600 }}>Total en cuentas</span>
+          <span
+            style={{
+              fontSize: 80,
+              fontWeight: 800,
+              letterSpacing: -2,
+              color: colors.brandGreen,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {formatCLP(
+              interpolate(frame, [totalAt * fps, (totalAt + 0.8) * fps], [0, TOTAL], {
+                ...clamp,
+                easing: Easing.bezier(0.33, 1, 0.68, 1),
+              }),
+            )}
+          </span>
+          <Burst x={700} y={70} at={totalAt + 0.8} distance={300} colors={[colors.brandGreen, "white", "#eab308"]} />
+        </div>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };
