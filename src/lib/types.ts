@@ -92,6 +92,8 @@ export interface Settings {
   themeChosen?: boolean
   onboarded: boolean
   accounts: MoneyAccount[]
+  /** Cuentas que suman el "Saldo disponible" del inicio. Sin valor = todas. */
+  homeAccounts?: string[]
   incomeSources: IncomeSource[]
 }
 

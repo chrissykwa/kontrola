@@ -137,6 +137,7 @@ export function normalize(input: unknown): AppData {
       theme: (s.theme === 'system' || s.theme === 'dark') && s.themeChosen === true ? s.theme : 'light',
       themeChosen: s.themeChosen === true,
       onboarded: s.onboarded === true || transactions.length > 0,
+      homeAccounts: Array.isArray(s.homeAccounts) && s.homeAccounts.every(isStr) && s.homeAccounts.length ? s.homeAccounts : undefined,
     },
     categories: categories.length ? categories : DEFAULT_CATEGORIES.map((c) => ({ ...c })),
     transactions,

@@ -1,23 +1,32 @@
-import { ChevronRight, CircleAlert, CreditCard, Plus, Settings as SettingsIcon, Target } from 'lucide-react'
-import { useMemo } from 'react'
+import { ChevronDown, ChevronRight, CircleAlert, CreditCard, Plus, Settings as SettingsIcon, Target, Wallet } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { CategoryIcon } from '../components/Icon'
 import { Logo } from '../components/Logo'
+import { Sheet } from '../components/Sheet'
 import { TxRow } from '../components/TxRow'
 import { EmptyState, Meter } from '../components/ui'
 import { currentMonth, dateLabel, monthLabel, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
 import { incomeOccurrences } from '../lib/planning'
-import { accountBalance, budgetStatus, creditBills, currentBalance, monthPace, monthSummary } from '../lib/stats'
+import { accountBalance, budgetStatus, creditBills, homeAccounts, homeBalance, monthPace, monthSummary } from '../lib/stats'
 import { useCategoryMap, useStore } from '../state/store'
 import { useUI } from '../state/ui'
 
 export function Home() {
-  const { data } = useStore()
+  const { data, updateSettings } = useStore()
   const cats = useCategoryMap()
   const ui = useUI()
   const month = currentMonth()
+  const [pickingAccounts, setPickingAccounts] = useState(false)
 
-  const balance = currentBalance(data)
+  // Saldo del inicio: solo las cuentas elegidas (botón junto al logo), o todas.
+  const cashAccounts = data.settings.accounts.filter((a) => a.kind === 'cash' && !a.archived)
+  const chosen = homeAccounts(data)
+  const showsAll = chosen.length === 0 || chosen.length === cashAccounts.length
+  const scopeLabel = showsAll ? 'Todas las cuentas' : chosen.length === 1 ? chosen[0].name : `${chosen.length} cuentas`
+  const balance = homeBalance(data)
+  const setChosen = (ids: string[]) =>
+    updateSettings({ homeAccounts: ids.length === 0 || ids.length === cashAccounts.length ? undefined : ids })
   const cards = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived)
   const hasCards = cards.length > 0
   const cardDebt = cards.reduce((sum, a) => sum + Math.max(0, -accountBalance(data, a.id)), 0)
@@ -47,9 +56,23 @@ export function Home() {
   return (
     <div className="screen screen--home">
       <header className="topbar">
-        <div className="brand">
-          <Logo size={32} />
-          <span className="brand__name">Kontrola</span>
+        <div className="home-head">
+          <div className="brand">
+            <Logo size={32} />
+            <span className="brand__name">Kontrola</span>
+          </div>
+          {cashAccounts.length > 1 && (
+            <button
+              type="button"
+              className="scope-chip"
+              onClick={() => setPickingAccounts(true)}
+              aria-label={`Cuentas del saldo: ${scopeLabel}. Cambiar`}
+            >
+              <Wallet size={14} aria-hidden="true" />
+              <span>{scopeLabel}</span>
+              <ChevronDown size={14} aria-hidden="true" />
+            </button>
+          )}
         </div>
         <h1 className="home-desktop-title">Resumen</h1>
         <button type="button" className="icon-btn" onClick={() => ui.navigate('ajustes')} aria-label="Ajustes">
@@ -197,6 +220,37 @@ export function Home() {
           </EmptyState>
         )}
       </section>
+      <Sheet open={pickingAccounts} title="Saldo del inicio" onClose={() => setPickingAccounts(false)}>
+        <div className="form">
+          <p className="hint">Elige qué cuentas suman tu saldo disponible. Las tarjetas no se suman: su deuda está en “Cuentas y tarjetas”.</p>
+          <div className="card card--list scope-list">
+            <label className="scope-row">
+              <input type="checkbox" checked={showsAll} onChange={() => setChosen([])} />
+              <span className="scope-row__name">Todas las cuentas</span>
+            </label>
+            {cashAccounts.map((a) => {
+              const checked = !showsAll && chosen.some((c) => c.id === a.id)
+              return (
+                <label key={a.id} className="scope-row">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      const ids = showsAll ? [] : chosen.map((c) => c.id)
+                      setChosen(checked ? ids.filter((id) => id !== a.id) : [...ids, a.id])
+                    }}
+                  />
+                  <span className="scope-row__name">{a.name}</span>
+                  <span className="scope-row__value">{formatCLP(accountBalance(data, a.id))}</span>
+                </label>
+              )
+            })}
+          </div>
+          <button type="button" className="btn btn--primary btn--block" onClick={() => setPickingAccounts(false)}>
+            Listo · {formatCLP(balance)}
+          </button>
+        </div>
+      </Sheet>
     </div>
   )
 }
