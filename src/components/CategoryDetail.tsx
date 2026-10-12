@@ -15,17 +15,22 @@ const TOP_DETAILS = 5
 export function CategoryDetail({
   categoryId,
   month,
+  accounts,
   onSelectTx,
 }: {
   categoryId: string
   month: MonthKey
+  /** Si se indica, solo los gastos de esas cuentas (como el saldo elegido en el inicio). */
+  accounts?: string[]
   onSelectTx: (tx: Transaction) => void
 }) {
   const { data } = useStore()
   const cats = useCategoryMap()
   const category = cats.get(categoryId)
-  const breakdown = useMemo(() => categoryBreakdown(data, month, categoryId), [data, month, categoryId])
-  const monthSpent = useMemo(() => monthSummary(data, month).spent, [data, month])
+  const scope = useMemo(() => (accounts?.length ? new Set(accounts) : undefined), [accounts])
+  const breakdown = useMemo(() => categoryBreakdown(data, month, categoryId, scope), [data, month, categoryId, scope])
+  const monthSpent = useMemo(() => monthSummary(data, month, scope).spent, [data, month, scope])
+  const scopeNames = scope ? data.settings.accounts.filter((a) => scope.has(a.id)).map((a) => a.name).join(', ') : null
 
   const { entries, total, byDetail } = breakdown
   const share = monthSpent > 0 ? Math.round((total / monthSpent) * 100) : 0
@@ -43,6 +48,7 @@ export function CategoryDetail({
           <p className="muted small">
             {entries.length} {entries.length === 1 ? 'gasto' : 'gastos'} en {monthLabel(month).toLowerCase()}
             {share > 0 && ` · ${share}% de lo que gastaste`}
+            {scopeNames && ` · solo ${scopeNames}`}
           </p>
         </div>
       </div>

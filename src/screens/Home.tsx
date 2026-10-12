@@ -8,7 +8,7 @@ import { EmptyState, Meter } from '../components/ui'
 import { currentMonth, dateLabel, monthLabel, today } from '../lib/dates'
 import { formatCLP } from '../lib/money'
 import { incomeOccurrences } from '../lib/planning'
-import { accountBalance, budgetStatus, creditBills, homeAccounts, homeBalance, monthPace, monthSummary } from '../lib/stats'
+import { accountBalance, budgetStatus, creditBills, homeAccounts, homeBalance, inAccounts, monthPace, monthSummary } from '../lib/stats'
 import { useCategoryMap, useStore } from '../state/store'
 import { useUI } from '../state/ui'
 
@@ -21,10 +21,13 @@ export function Home() {
 
   // Saldo del inicio: solo las cuentas elegidas (botón junto al logo), o todas.
   const cashAccounts = data.settings.accounts.filter((a) => a.kind === 'cash' && !a.archived)
-  const chosen = homeAccounts(data)
+  const chosen = useMemo(() => homeAccounts(data), [data])
   const showsAll = chosen.length === 0 || chosen.length === cashAccounts.length
   const scopeLabel = showsAll ? 'Todas las cuentas' : chosen.length === 1 ? chosen[0].name : `${chosen.length} cuentas`
   const balance = homeBalance(data)
+  // Lo de abajo (mes, categorías y últimos movimientos) sigue a las cuentas elegidas; sin elegir, todas.
+  const scopeIds = useMemo(() => (showsAll ? undefined : chosen.map((a) => a.id)), [showsAll, chosen])
+  const scope = useMemo(() => (scopeIds ? new Set(scopeIds) : undefined), [scopeIds])
   const setChosen = (ids: string[]) =>
     updateSettings({ homeAccounts: ids.length === 0 || ids.length === cashAccounts.length ? undefined : ids })
   const cards = data.settings.accounts.filter((a) => a.kind === 'credit' && !a.archived)
@@ -39,16 +42,17 @@ export function Home() {
     .map((s) => ({ name: s.name, amount: s.expectedAmount, date: incomeOccurrences(s, today(), 1)[0] }))
     .filter((s) => s.date)
     .sort((a, b) => a.date.localeCompare(b.date))[0]
-  const summary = useMemo(() => monthSummary(data, month), [data, month])
+  const summary = useMemo(() => monthSummary(data, month, scope), [data, month, scope])
   const pace = monthPace(data, month, today())
   const monthName = monthLabel(month).split(' ')[0].toLowerCase()
 
   const recent = useMemo(
     () =>
-      [...data.transactions]
+      data.transactions
+        .filter((t) => !scope || inAccounts(t, scope))
         .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
         .slice(0, 5),
-    [data.transactions],
+    [data.transactions, scope],
   )
 
   const topCategories = [...summary.byCategory.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
@@ -177,7 +181,7 @@ export function Home() {
               const budget = c?.budget ?? 0
               return (
                 <li key={id}>
-                  <button type="button" className="cat-list__item rank__item--btn" onClick={() => ui.openCategory(id, month)}>
+                  <button type="button" className="cat-list__item rank__item--btn" onClick={() => ui.openCategory(id, month, scopeIds)}>
                   <CategoryIcon category={c} size="sm" />
                   <div className="cat-list__main">
                     <div className="cat-list__row">
@@ -215,7 +219,7 @@ export function Home() {
             ))}
           </ul>
         ) : (
-          <EmptyState icon={<Plus size={24} />} title="Aún no registras gastos">
+          <EmptyState icon={<Plus size={24} />} title={scope ? `Sin movimientos en ${scopeLabel}` : 'Aún no registras gastos'}>
             Toca <strong>+</strong> cada vez que gastes algo. Toma 5 segundos.
           </EmptyState>
         )}

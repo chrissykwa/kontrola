@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialData } from './defaults'
 import { parseImport } from './imports'
 import { incomeOccurrences, predictExpenses } from './planning'
-import { accountBalance, creditBills, creditCycle, currentBalance, homeBalance, monthSummary } from './stats'
+import { accountBalance, categoryBreakdown, creditBills, creditCycle, currentBalance, homeBalance, inAccounts, monthSummary } from './stats'
 import { normalize } from './storage'
 import type { Transaction } from './types'
 
@@ -79,6 +79,25 @@ describe('saldo del inicio', () => {
     expect(normalize(data).settings.homeAccounts).toEqual(['falabella'])
     data.settings.accounts[0].archived = true
     expect(homeBalance(data)).toBe(currentBalance(data))
+  })
+
+  it('el resumen del mes y el desglose pueden limitarse a las cuentas elegidas', () => {
+    const data = createInitialData()
+    data.settings.accounts = [
+      { id: 'falabella', name: 'Corriente Falabella', kind: 'cash', openingBalance: 0 },
+      { id: 'efectivo', name: 'Efectivo', kind: 'cash', openingBalance: 0 },
+    ]
+    data.transactions = [
+      { ...tx('almuerzo', 'expense', 8_000, '2026-10-03', 'efectivo') },
+      { ...tx('super', 'expense', 40_000, '2026-10-04', 'falabella') },
+      { ...tx('sueldo', 'income', 900_000, '2026-10-01', 'falabella'), categoryId: 'sueldo' },
+      tx('giro', 'transfer', 20_000, '2026-10-05', 'falabella', 'efectivo'),
+    ]
+    const efectivo = new Set(['efectivo'])
+    expect(monthSummary(data, '2026-10', efectivo)).toMatchObject({ spent: 8_000, income: 0 })
+    expect(monthSummary(data, '2026-10')).toMatchObject({ spent: 48_000, income: 900_000 })
+    expect(categoryBreakdown(data, '2026-10', 'comida', efectivo).total).toBe(8_000)
+    expect(inAccounts(data.transactions[3], efectivo)).toBe(true)
   })
 })
 
