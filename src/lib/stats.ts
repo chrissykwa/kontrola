@@ -10,6 +10,18 @@ export function currentBalance(data: AppData): number {
   return data.settings.accounts.filter((a) => a.kind === 'cash').reduce((sum, a) => sum + accountBalance(data, a.id), 0)
 }
 
+/** Cuentas elegidas para el saldo del inicio (vacío = todas). Ignora las archivadas o borradas. */
+export function homeAccounts(data: AppData): MoneyAccount[] {
+  const chosen = new Set(data.settings.homeAccounts ?? [])
+  return data.settings.accounts.filter((a) => a.kind === 'cash' && !a.archived && chosen.has(a.id))
+}
+
+/** "Saldo disponible" del inicio: solo las cuentas elegidas, o todas si no se eligió ninguna. */
+export function homeBalance(data: AppData): number {
+  const chosen = homeAccounts(data)
+  return chosen.length ? chosen.reduce((sum, a) => sum + accountBalance(data, a.id), 0) : currentBalance(data)
+}
+
 export function accountBalance(data: AppData, accountId: string): number {
   const account = data.settings.accounts.find((a) => a.id === accountId)
   if (!account) return 0

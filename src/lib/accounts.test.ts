@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialData } from './defaults'
 import { parseImport } from './imports'
 import { incomeOccurrences, predictExpenses } from './planning'
-import { accountBalance, creditBills, creditCycle, currentBalance, monthSummary } from './stats'
+import { accountBalance, creditBills, creditCycle, currentBalance, homeBalance, monthSummary } from './stats'
 import { normalize } from './storage'
 import type { Transaction } from './types'
 
@@ -62,6 +62,23 @@ describe('cuentas y tarjetas', () => {
     expect(['2026-10', '2026-11', '2026-12', '2027-01'].map((m) => monthSummary(data, m).spent)).toEqual([0, 3_334, 3_334, 3_333])
     expect(normalize(data).settings.accounts[1].cycleOverrides).toHaveLength(2)
     expect(normalize(data).transactions[0].installments).toBe(3)
+  })
+})
+
+describe('saldo del inicio', () => {
+  it('suma solo las cuentas elegidas; sin elegir (o con una archivada) usa todas', () => {
+    const data = createInitialData()
+    data.settings.accounts = [
+      { id: 'falabella', name: 'Corriente Falabella', kind: 'cash', openingBalance: 238_097 },
+      { id: 'efectivo', name: 'Efectivo', kind: 'cash', openingBalance: 13_000 },
+      { id: 'cmr', name: 'CMR', kind: 'credit', openingBalance: -50_000, closingDay: 20, dueDay: 5 },
+    ]
+    expect(homeBalance(data)).toBe(251_097)
+    data.settings.homeAccounts = ['falabella']
+    expect(homeBalance(data)).toBe(238_097)
+    expect(normalize(data).settings.homeAccounts).toEqual(['falabella'])
+    data.settings.accounts[0].archived = true
+    expect(homeBalance(data)).toBe(currentBalance(data))
   })
 })
 

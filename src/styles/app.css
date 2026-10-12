@@ -506,6 +506,83 @@ fieldset {
   letter-spacing: -0.02em;
 }
 
+/* Inicio: logo + botón para elegir qué cuentas suman el saldo */
+.home-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.scope-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 170px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+  transition: background var(--dur-fast);
+}
+
+/* Área de toque de 44px sin agrandar el botón */
+.scope-chip::before {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
+}
+
+.scope-chip:hover {
+  background: var(--surface-2);
+}
+
+.scope-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-chip svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.scope-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding: 0 var(--space-4);
+  cursor: pointer;
+}
+
+.scope-row + .scope-row {
+  border-top: 1px solid var(--border);
+}
+
+.scope-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand);
+  flex-shrink: 0;
+}
+
+.scope-row__name {
+  flex: 1;
+  font-weight: 550;
+}
+
+.scope-row__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Saldo: número protagonista sobre blanco */
 .hero {
   display: flex;
