@@ -226,13 +226,20 @@ export interface MonthSummary {
   expenseCount: number
 }
 
-export function monthSummary(data: AppData, key: MonthKey): MonthSummary {
+/** ¿El movimiento es de alguna de estas cuentas (o llega a una de ellas, si es traspaso)? */
+export function inAccounts(t: Transaction, accounts: ReadonlySet<string>): boolean {
+  return accounts.has(t.accountId ?? 'principal') || (t.type === 'transfer' && !!t.toAccountId && accounts.has(t.toAccountId))
+}
+
+/** `accounts`: si se indica, solo cuenta los movimientos de esas cuentas (ej. el saldo elegido en el inicio). */
+export function monthSummary(data: AppData, key: MonthKey, accounts?: ReadonlySet<string>): MonthSummary {
   const daily = new Array<number>(daysInMonth(key)).fill(0)
   const byCategory = new Map<string, number>()
   let spent = 0
   let income = 0
   let expenseCount = 0
   for (const e of spendEntriesOfMonth(data, key)) {
+    if (accounts && !inAccounts(e.tx, accounts)) continue
     spent += e.amount
     expenseCount++
     daily[Number(e.date.slice(8, 10)) - 1] += e.amount
@@ -240,7 +247,7 @@ export function monthSummary(data: AppData, key: MonthKey): MonthSummary {
     byCategory.set(cat, (byCategory.get(cat) ?? 0) + e.amount)
   }
   for (const t of transactionsOfMonth(data, key)) {
-    if (t.type === 'income') income += t.amount
+    if (t.type === 'income' && (!accounts || inAccounts(t, accounts))) income += t.amount
   }
   return { spent, income, byCategory, daily, expenseCount }
 }
@@ -261,9 +268,9 @@ export interface CategoryBreakdown {
 }
 
 /** Desglose de una categoría en un mes. `categoryId` es la llave de `monthSummary().byCategory`. */
-export function categoryBreakdown(data: AppData, key: MonthKey, categoryId: string): CategoryBreakdown {
+export function categoryBreakdown(data: AppData, key: MonthKey, categoryId: string, accounts?: ReadonlySet<string>): CategoryBreakdown {
   const entries = spendEntriesOfMonth(data, key)
-    .filter((e) => (e.tx.categoryId ?? 'otros') === categoryId)
+    .filter((e) => (e.tx.categoryId ?? 'otros') === categoryId && (!accounts || inAccounts(e.tx, accounts)))
     .sort((a, b) => b.tx.date.localeCompare(a.tx.date) || b.tx.createdAt - a.tx.createdAt)
   const groups = new Map<string, DetailGroup>()
   for (const { tx, amount } of entries) {

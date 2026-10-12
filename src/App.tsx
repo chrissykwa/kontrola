@@ -23,7 +23,7 @@ import { ImportMovements } from './screens/ImportMovements'
 import { useCategoryMap, useStore } from './state/store'
 import { UIContext, useHashRoute, type Route, type UIActions } from './state/ui'
 
-type CategoryRef = { categoryId: string; month: MonthKey }
+type CategoryRef = { categoryId: string; month: MonthKey; accounts?: string[] }
 
 type SheetState =
   | { kind: 'new' }
@@ -85,7 +85,7 @@ function AppScreens() {
       openNewTx: () => setSheet({ kind: 'new' }),
       openEditTx: (tx) => setSheet({ kind: 'edit', tx }),
       openAdjust: () => setSheet({ kind: 'adjust' }),
-      openCategory: (categoryId, month) => setSheet({ kind: 'category', categoryId, month }),
+      openCategory: (categoryId, month, accounts) => setSheet({ kind: 'category', categoryId, month, accounts }),
     }),
     [navigate],
   )
@@ -186,12 +186,13 @@ function AppScreens() {
             <CategoryDetail
               categoryId={sheet.categoryId}
               month={sheet.month}
+              accounts={sheet.accounts}
               onSelectTx={(tx) => {
                 // "Otros cargos del estado" no es un gasto editable: se ajusta en Cuentas.
                 if (tx.id.startsWith(UNLISTED_PREFIX)) {
                   setSheet(null)
                   navigate('cuentas')
-                } else setSheet({ kind: 'edit', tx, back: { categoryId: sheet.categoryId, month: sheet.month } })
+                } else setSheet({ kind: 'edit', tx, back: { categoryId: sheet.categoryId, month: sheet.month, accounts: sheet.accounts } })
               }}
             />
           ) : sheet?.kind === 'edit' ? (

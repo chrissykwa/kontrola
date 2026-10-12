@@ -24,6 +24,7 @@ export function TxRow({
   onSelect: (tx: Transaction) => void
 }) {
   const { data } = useStore()
+  const paysCard = tx.type === 'transfer' && data.settings.accounts.some((a) => a.kind === 'credit' && a.id === tx.toAccountId)
   const card = tx.type === 'expense' ? data.settings.accounts.find((a) => a.kind === 'credit' && a.id === tx.accountId) : undefined
   // Con tarjeta: cuándo se paga (o qué cuota es), para que se entienda en qué mes cuenta.
   const cardInfo = entry?.card
@@ -41,7 +42,7 @@ export function TxRow({
   const isTransfer = tx.type === 'transfer'
   const title = tx.note || (isAdjustment ? 'Ajuste de saldo' : isTransfer ? 'Traspaso entre cuentas' : category?.name ?? 'Sin categoría')
   const subtitle = [
-    isAdjustment ? 'Ajuste' : isTransfer ? 'Traspaso / pago de tarjeta' : tx.note && showCategory ? category?.name : null,
+    isAdjustment ? 'Ajuste' : isTransfer ? (paysCard ? 'Pago de tarjeta' : 'Traspaso') : tx.note && showCategory ? category?.name : null,
     showDate && !entry?.unlisted ? shortDayLabel(tx.date) : null,
     cardInfo,
   ]

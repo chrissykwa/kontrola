@@ -41,8 +41,8 @@ export interface UIActions {
   openNewTx(): void
   openEditTx(tx: Transaction): void
   openAdjust(): void
-  /** Desglose de una categoría en un mes (`categoryId` como en `monthSummary().byCategory`). */
-  openCategory(categoryId: string, month: MonthKey): void
+  /** Desglose de una categoría en un mes (`categoryId` como en `monthSummary().byCategory`); `accounts` lo limita a esas cuentas. */
+  openCategory(categoryId: string, month: MonthKey, accounts?: string[]): void
 }
 
 export const UIContext = createContext<UIActions | null>(null)
